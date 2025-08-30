@@ -1,6 +1,41 @@
-# Lora Style Transfer
+# 🎨 LoRA Style Transfer
 
-Frontendové demonстраční rozhraní pro stylové převody obrázků s mock daty, připravené na integraci s Cursor backendem.
+**AI-powered LoRA style transfer application s pokročilým file managementem a RunPod optimalizací.**
+
+## 🚀 Přehled
+
+Pokročilá fullstack aplikace pro AI style transfer pomocí LoRA modelů a Stable Diffusion. Optimalizována pro deployment na RunPod s GPU podporou a integrovaným file browserem pro persistent storage.
+
+### ✨ Klíčové funkce
+
+- 🎯 **AI Style Transfer** - Stable Diffusion + LoRA modely
+- 📁 **File Browser** - procházení /data/models a /data/loras
+- 🔧 **Backend Settings** - connection management s auto-detekcí
+- 📤 **Model Upload** - drag & drop s progress tracking
+- ⚙️ **Parameter Controls** - pokročilé nastavení AI processing
+- 📊 **Progress Tracking** - real-time status updates
+- 🖼️ **Results Gallery** - preview a download výsledků
+- 🐳 **Docker Ready** - optimalizováno pro RunPod deployment
+
+## 🏗️ Architektura
+
+### **Frontend (Next.js 14)**
+- React 18 s TypeScript
+- Tailwind CSS + shadcn/ui komponenty
+- Responsive design
+- Real-time progress tracking
+
+### **Backend (FastAPI)**
+- Python 3.10 + FastAPI
+- PyTorch 2.1.0 + CUDA 12.1
+- Diffusers + Transformers
+- Memory optimization pro GPU
+
+### **Deployment**
+- Docker multi-stage build
+- RunPod optimalizace
+- Persistent storage support
+- Health monitoring
 
 ## Klíčové vlastnosti (What it does)
 - Frontend-only demo s mock daty a vizuálně bohatým UI pro stylové transfery

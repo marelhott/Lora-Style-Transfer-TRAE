@@ -8,19 +8,18 @@ import { Badge } from "@/components/ui/badge"
 import { 
   Settings, 
   Cpu, 
-  Palette,
   Play,
   Download,
   AlertCircle
 } from "lucide-react"
-import Image from "next/image"
 
 import { ImageUpload } from "@/components/image-upload"
 import { ParameterControls, ProcessingParameters } from "@/components/parameter-controls"
 import { ProgressTracker, ProcessingStatus } from "@/components/progress-tracker"
 import { ModelManager, AIModel } from "@/components/model-manager"
 import { ResultsGallery, GeneratedResult } from "@/components/results-gallery"
-import { PresetManager, Preset } from "@/components/preset-manager"
+import { BackendSettings } from "@/components/backend-settings"
+
 import { ErrorBoundary } from "@/components/error-boundary"
 
 // Convex imports
@@ -28,59 +27,107 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 
-// Mock data for demo purposes
-const mockModels: AIModel[] = [
-  // Demo models for testing - will be replaced when backend is integrated
-  {
-    id: "demo_model_1",
-    name: "Artistic Style v1.0",
-    type: "full",
-    fileSize: 2147483648, // 2GB
-    uploadedAt: Date.now() - 86400000, // 1 day ago
-    isActive: true,
-    metadata: {
-      description: "Univerzální model pro umělecké stylové převody",
-      category: "artistic"
+// API endpoint for RunPod backend
+// Automatická detekce prostředí
+const getApiBaseUrl = () => {
+  // Pokud je nastavena env proměnná, použij ji
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL
+  }
+  
+  // Pokud běžíme v browseru
+  if (typeof window !== 'undefined') {
+    // Pokud je uložena URL v localStorage (Backend Settings)
+    const savedUrl = localStorage.getItem('backend_url')
+    if (savedUrl) {
+      return savedUrl
     }
-  },
-  {
-    id: "demo_model_2", 
-    name: "Portrait Enhancer",
-    type: "lora",
-    fileSize: 134217728, // 128MB
-    uploadedAt: Date.now() - 172800000, // 2 days ago
-    isActive: true,
-    metadata: {
-      description: "Specializovaný LoRA model pro vylepšení portrétů",
-      category: "portrait"
+    
+    // Automatická detekce pro RunPod fullstack
+    const currentHost = window.location.host
+    const currentUrl = window.location.href
+    console.log('Current host:', currentHost)
+    console.log('Current URL:', currentUrl)
+    
+    // Detekce RunPod proxy pattern - různé varianty
+    if (currentHost.includes('proxy.runpod.net')) {
+      // Pattern: xxx-3000.proxy.runpod.net -> xxx-8000.proxy.runpod.net
+      if (currentHost.includes('-3000.')) {
+        const baseHost = currentHost.replace('-3000.', '-8000.')
+        const apiUrl = `https://${baseHost}`
+        console.log('RunPod -3000 pattern detected, API URL:', apiUrl)
+        return apiUrl
+      }
+      
+      // Pattern: xxx.proxy.runpod.net (bez portu) -> xxx-8000.proxy.runpod.net
+      const hostParts = currentHost.split('.')
+      if (hostParts.length >= 3 && hostParts[1] === 'proxy' && hostParts[2] === 'runpod') {
+        const baseId = hostParts[0]
+        const apiUrl = `https://${baseId}-8000.proxy.runpod.net`
+        console.log('RunPod base pattern detected, API URL:', apiUrl)
+        return apiUrl
+      }
     }
-  },
-  {
-    id: "demo_model_3",
-    name: "Landscape Master",
-    type: "full", 
-    fileSize: 1073741824, // 1GB
-    uploadedAt: Date.now() - 259200000, // 3 days ago
-    isActive: true,
-    metadata: {
-      description: "Model optimalizovaný pro krajinné fotografie",
-      category: "landscape"
+    
+    // Fallback detekce z URL
+    if (currentUrl.includes('runpod.net')) {
+      // Zkus extrahovat base ID z URL
+      const urlMatch = currentUrl.match(/https:\/\/([^-]+)(-\d+)?\.proxy\.runpod\.net/)
+      if (urlMatch) {
+        const baseId = urlMatch[1]
+        const apiUrl = `https://${baseId}-8000.proxy.runpod.net`
+        console.log('RunPod URL pattern detected, API URL:', apiUrl)
+        return apiUrl
+      }
     }
   }
-]
+  
+  // Pokud běžíme v browseru, zkus vytvořit RunPod URL z aktuální URL
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    const href = window.location.href
+    
+    // Extrahuj base ID z jakékoliv RunPod URL
+    const runpodMatch = href.match(/https?:\/\/([^-\.]+)(-\d+)?\.proxy\.runpod\.net/)
+    if (runpodMatch) {
+      const baseId = runpodMatch[1]
+      const apiUrl = `https://${baseId}-8000.proxy.runpod.net`
+      console.log('RunPod base ID extracted, API URL:', apiUrl)
+      return apiUrl
+    }
+    
+    // Pokud hostname obsahuje RunPod pattern
+    if (hostname.includes('proxy.runpod.net')) {
+      const baseId = hostname.split('.')[0].replace('-3000', '').replace('-8000', '')
+      const apiUrl = `https://${baseId}-8000.proxy.runpod.net`
+      console.log('RunPod hostname pattern, API URL:', apiUrl)
+      return apiUrl
+    }
+    
+    // Pokud nejsme na localhost, zkus vytvořit RunPod URL
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      const baseId = hostname.split('.')[0].replace('-3000', '')
+      const apiUrl = `https://${baseId}-8000.proxy.runpod.net`
+      console.log('Non-localhost detected, trying RunPod URL:', apiUrl)
+      return apiUrl
+    }
+  }
+  
+  // Pouze pro lokální development
+  console.warn('Fallback to localhost - this should only happen in local development!')
+  return 'http://localhost:8000'
+}
+
+// API_BASE_URL se volá dynamicky v loadModels funkci
 
 export default function Home() {
   // Convex queries and mutations
-  const presets = useQuery(api.presets.getPresets) || []
   const results = useQuery(api.results.getResults) || []
-  const createPreset = useMutation(api.presets.createPreset)
-  const deletePreset = useMutation(api.presets.deletePreset)
-  const togglePresetFavorite = useMutation(api.presets.toggleFavorite)
   const createResults = useMutation(api.results.createResults)
   const toggleResultFavorite = useMutation(api.results.toggleFavorite)
 
   // State management
-  const [models] = useState<AIModel[]>(mockModels)
+  const [models, setModels] = useState<AIModel[]>([])
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
@@ -102,15 +149,7 @@ export default function Home() {
     upscaleFactor: undefined
   })
 
-  // Convert Convex presets to frontend format
-  const convertedPresets: Preset[] = presets.map(preset => ({
-    id: preset._id,
-    name: preset.name,
-    parameters: preset.parameters,
-    isFavorite: preset.isFavorite,
-    createdAt: preset.createdAt,
-    updatedAt: preset.updatedAt
-  }))
+
 
   // Convert Convex results to frontend format
   const convertedResults: GeneratedResult[] = results.map(result => ({
@@ -122,36 +161,7 @@ export default function Home() {
     isFavorite: result.isFavorite
   }))
 
-  const handleLoadPreset = (preset: Preset) => {
-    setParameters(preset.parameters)
-  }
 
-  const handleSavePreset = async (name: string, params: ProcessingParameters) => {
-    try {
-      await createPreset({
-        name,
-        parameters: params
-      })
-    } catch (error) {
-      console.error("Failed to save preset:", error)
-    }
-  }
-
-  const handleDeletePreset = async (presetId: string) => {
-    try {
-      await deletePreset({ id: presetId as Id<"presets"> })
-    } catch (error) {
-      console.error("Failed to delete preset:", error)
-    }
-  }
-
-  const handleTogglePresetFavorite = async (presetId: string) => {
-    try {
-      await togglePresetFavorite({ id: presetId as Id<"presets"> })
-    } catch (error) {
-      console.error("Failed to toggle preset favorite:", error)
-    }
-  }
 
   const handleToggleResultFavorite = async (resultId: string) => {
     try {
@@ -225,7 +235,7 @@ export default function Home() {
 
   const canProcess = uploadedFile && selectedModelId && !isProcessing
 
-  // Mock processing function for demo
+  // Real AI processing function for RunPod backend
   const handleStartProcessing = async () => {
     if (!uploadedFile || !selectedModelId) return
     
@@ -242,60 +252,132 @@ export default function Home() {
     const startTime = Date.now()
 
     try {
-      // Simulate processing steps
-      const steps = [
-        { status: "loading_model" as ProcessingStatus, step: "Loading AI model...", progress: 0.1, duration: 2000 },
-        { status: "generating" as ProcessingStatus, step: "Generating images...", progress: 0.5, duration: 8000 },
-        { status: "upscaling" as ProcessingStatus, step: "Enhancing image quality...", progress: 0.9, duration: 2000 },
-        { status: "completed" as ProcessingStatus, step: "Processing completed!", progress: 1.0, duration: 500 }
-      ]
+      // Convert image to base64
+      const formData = new FormData()
+      formData.append('image', uploadedFile)
+      formData.append('model_id', selectedModelId)
+      formData.append('parameters', JSON.stringify(parameters))
 
-      for (const stepData of steps) {
-        setProcessingStatus(stepData.status)
-        setCurrentStep(stepData.step)
-        setProgress(stepData.progress * 100)
+      // Start processing job
+      const response = await fetch(`${getApiBaseUrl()}/api/process`, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const { job_id } = await response.json()
+      
+      // Poll for status updates
+      const pollStatus = async () => {
+        const statusResponse = await fetch(`${getApiBaseUrl()}/api/status/${job_id}`)
+        const statusData = await statusResponse.json()
+        
+        setProcessingStatus(statusData.status)
+        setCurrentStep(statusData.current_step || "Processing...")
+        setProgress(statusData.progress || 0)
         setElapsedTime((Date.now() - startTime) / 1000)
         
-        if (stepData.status !== "completed") {
-          setEstimatedTime((Date.now() - startTime) / 1000 / stepData.progress * (1 - stepData.progress))
+        if (statusData.estimated_time_remaining) {
+          setEstimatedTime(statusData.estimated_time_remaining)
         }
         
-        await new Promise(resolve => setTimeout(resolve, stepData.duration))
-      }
-
-      // Create mock results using the uploaded image
-      const mockResults = Array.from({ length: 3 }, (_, index) => ({
-        imageUrl: uploadedImage!, // Use uploaded image as mock result
-        seed: Math.floor(Math.random() * 1000000),
-        parameters: {
-          strength: parameters.strength,
-          cfgScale: parameters.cfgScale,
-          steps: parameters.steps,
-          sampler: parameters.sampler
-        },
-        modelName: selectedModel.name,
-        loraName: selectedModel.type === 'lora' ? selectedModel.name : undefined,
-      }))
-      
-      // Save to database
-      try {
-        const resultIds = await createResults({ results: mockResults })
-        if (resultIds.length > 0) {
-          setSelectedResultId(resultIds[0])
+        if (statusData.status === 'completed') {
+          // Save results to database
+          try {
+            const resultIds = await createResults({ results: statusData.results })
+            if (resultIds.length > 0) {
+              setSelectedResultId(resultIds[0])
+            }
+          } catch (error) {
+            console.error("Failed to save results to database:", error)
+          }
+          setIsProcessing(false)
+          return
         }
-      } catch (error) {
-        console.error("Failed to save results to database:", error)
+        
+        if (statusData.status === 'failed') {
+          throw new Error(statusData.error_message || 'Processing failed')
+        }
+        
+        // Continue polling
+        setTimeout(pollStatus, 2000)
       }
       
-      setIsProcessing(false)
+      // Start polling
+      setTimeout(pollStatus, 1000)
 
     } catch (error) {
-      console.error('Error during mock processing:', error)
+      console.error('Error during processing:', error)
       setProcessingStatus("failed")
       setCurrentStep(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
       setIsProcessing(false)
     }
   }
+
+  // Load models from API
+  const loadModels = async () => {
+    try {
+      // Použij aktuální API_BASE_URL (který už obsahuje správnou logiku)
+      const apiUrl = getApiBaseUrl()
+      console.log('🔍 Loading models from:', apiUrl)
+      console.log('🌐 Current window.location:', typeof window !== 'undefined' ? window.location.href : 'SSR')
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => {
+        console.error('⏰ Fetch timeout after 10s')
+        controller.abort()
+      }, 10000)
+      
+      const response = await fetch(`${apiUrl}/api/models`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+      
+      console.log('📡 Response status:', response.status)
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()))
+      
+      if (response.ok) {
+        const modelsData = await response.json()
+        console.log('✅ Loaded models:', modelsData.length)
+        setModels(modelsData)
+      } else {
+        const errorText = await response.text()
+        console.error('❌ Failed to load models: HTTP', response.status, errorText)
+        setModels([]) // Vyčisti modely při chybě
+      }
+    } catch (error) {
+      console.error('💥 Failed to load models:', error)
+      console.error('💥 Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      })
+      setModels([]) // Vyčisti modely při chybě
+    }
+  }
+
+  useEffect(() => {
+    loadModels()
+    
+    // Reload models when backend URL changes
+    const handleStorageChange = () => {
+      loadModels()
+    }
+    window.addEventListener('storage', handleStorageChange)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+    }
+  }, [])
 
   // Set selected result when results change
   useEffect(() => {
@@ -306,37 +388,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <Image
-                  src="https://nextjs.org/icons/next.svg"
-                  alt="Next.js"
-                  width={32}
-                  height={32}
-                  className="dark:invert"
-                />
-                <Palette className="w-6 h-6 text-primary" />
-                <div>
-                  <h1 className="text-xl font-bold">Neural Art Studio</h1>
-                  <p className="text-sm text-muted-foreground">AI-Powered Style Transfer</p>
-                </div>
-              </div>
-            </div>
-            
-            {/* Status Badge */}
-            <div className="flex items-center space-x-2">
-              <Badge variant="default" className="text-xs">
-                Demo Mode
-              </Badge>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Main Layout */}
       <ErrorBoundary>
         <div className="container mx-auto px-4 py-6">
@@ -352,17 +403,7 @@ export default function Home() {
                   onLoadPreset={() => console.log("Načíst předvolbu")}
                 />
               </ErrorBoundary>
-              
-              <ErrorBoundary>
-                <PresetManager
-                  presets={convertedPresets}
-                  currentParameters={parameters}
-                  onLoadPreset={handleLoadPreset}
-                  onSavePreset={handleSavePreset}
-                  onDeletePreset={handleDeletePreset}
-                  onToggleFavorite={handleTogglePresetFavorite}
-                />
-              </ErrorBoundary>
+
             </div>
 
             {/* Center - Main Content */}
@@ -414,6 +455,11 @@ export default function Home() {
 
             {/* Right Sidebar - Models only */}
             <div className="col-span-3 space-y-4 overflow-y-auto custom-scrollbar">
+              {/* Backend Settings */}
+              <ErrorBoundary>
+                <BackendSettings />
+              </ErrorBoundary>
+
               {/* Image Upload - moved to right sidebar */}
               <ErrorBoundary>
                 <ImageUpload
