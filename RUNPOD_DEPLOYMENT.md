@@ -44,14 +44,86 @@ Nahrajte své modely do persistentního úložiště:
 git clone https://github.com/your-username/lora-style-transfer.git
 cd lora-style-transfer
 
-# Build image
+# Build image (nebo použij hotový)
 docker build -t lora-style-transfer:latest .
+
+# NEBO použij hotový image z Docker Hub
+docker pull mulenmara1505/lora-style-transfer:fullstack
 
 # Tag pro registry
 docker tag lora-style-transfer:latest your-registry/lora-style-transfer:latest
 
 # Push do registry
 docker push your-registry/lora-style-transfer:latest
+```
+
+## 🚀 Quick Start s hotovým image
+
+```bash
+# Spuštění s hotovým Docker image
+docker run -d \
+  --name lora-style-transfer \
+  --gpus all \
+  -p 3000:3000 \
+  -p 8000:8000 \
+  -v /workspace:/data \
+  mulenmara1505/lora-style-transfer:fullstack
+```
+
+### RunPod Template
+
+1. **Image**: `mulenmara1505/lora-style-transfer:fullstack`
+2. **Ports**: `3000/http` (frontend), `8000/http` (backend API)
+3. **Volume**: `/workspace` → `/data` (persistent storage)
+4. **GPU**: RTX 4090 nebo lepší (min. 12GB VRAM)
+
+## 🐛 Troubleshooting
+
+### Failed to fetch chyba
+
+**Problém**: Frontend nemůže volat backend API na RunPod proxy URL.
+
+**Řešení**:
+
+1. **Automatická detekce URL** (implementováno):
+   - Frontend automaticky detekuje RunPod proxy pattern
+   - Pattern: `xxx-3000.proxy.runpod.net` → `xxx-8000.proxy.runpod.net`
+
+2. **Manuální nastavení** v Backend Settings:
+   ```
+   https://your-runpod-id-8000.proxy.runpod.net
+   ```
+
+3. **Debug v browser console**:
+   ```javascript
+   // Zkontroluj debug logy
+   console.log('🔧 getApiBaseUrl() called')
+   console.log('🔧 Current host:', window.location.hostname)
+   console.log('🔍 Loading models from:', apiUrl)
+   ```
+
+### Backend nedostupný
+
+**Kontrola**:
+```bash
+# V RunPod terminálu
+curl http://localhost:8000/api/health
+
+# Zkontroluj procesy
+ps aux | grep uvicorn
+
+# Zkontroluj porty
+ss -tulpn | grep 8000
+```
+
+**Restart**:
+```bash
+# Restart containeru
+docker restart <container_id>
+
+# Nebo manuální spuštění
+cd /app/backend
+python main.py
 ```
 
 ## 🚀 Deployment na RunPod
