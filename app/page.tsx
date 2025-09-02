@@ -30,91 +30,39 @@ import { Id } from "@/convex/_generated/dataModel"
 // API endpoint for RunPod backend
 // Automatická detekce prostředí
 const getApiBaseUrl = () => {
-  // Pokud je nastavena env proměnná, použij ji
+  console.log('🔧 getApiBaseUrl() called')
+  
+  // 1. Environment variable
   if (process.env.NEXT_PUBLIC_API_URL) {
+    console.log('🔧 Using env variable:', process.env.NEXT_PUBLIC_API_URL)
     return process.env.NEXT_PUBLIC_API_URL
   }
   
-  // Pokud běžíme v browseru
+  // 2. Saved URL from Backend Settings
   if (typeof window !== 'undefined') {
-    // Pokud je uložena URL v localStorage (Backend Settings)
     const savedUrl = localStorage.getItem('backend_url')
     if (savedUrl) {
+      console.log('🔧 Using saved URL:', savedUrl)
       return savedUrl
     }
     
-    // Automatická detekce pro RunPod fullstack
-    const currentHost = window.location.host
-    const currentUrl = window.location.href
-    console.log('Current host:', currentHost)
-    console.log('Current URL:', currentUrl)
-    
-    // Detekce RunPod proxy pattern - různé varianty
-    if (currentHost.includes('proxy.runpod.net')) {
-      // Pattern: xxx-3000.proxy.runpod.net -> xxx-8000.proxy.runpod.net
-      if (currentHost.includes('-3000.')) {
-        const baseHost = currentHost.replace('-3000.', '-8000.')
-        const apiUrl = `https://${baseHost}`
-        console.log('RunPod -3000 pattern detected, API URL:', apiUrl)
-        return apiUrl
-      }
-      
-      // Pattern: xxx.proxy.runpod.net (bez portu) -> xxx-8000.proxy.runpod.net
-      const hostParts = currentHost.split('.')
-      if (hostParts.length >= 3 && hostParts[1] === 'proxy' && hostParts[2] === 'runpod') {
-        const baseId = hostParts[0]
-        const apiUrl = `https://${baseId}-8000.proxy.runpod.net`
-        console.log('RunPod base pattern detected, API URL:', apiUrl)
-        return apiUrl
-      }
-    }
-    
-    // Fallback detekce z URL
-    if (currentUrl.includes('runpod.net')) {
-      // Zkus extrahovat base ID z URL
-      const urlMatch = currentUrl.match(/https:\/\/([^-]+)(-\d+)?\.proxy\.runpod\.net/)
-      if (urlMatch) {
-        const baseId = urlMatch[1]
-        const apiUrl = `https://${baseId}-8000.proxy.runpod.net`
-        console.log('RunPod URL pattern detected, API URL:', apiUrl)
-        return apiUrl
-      }
-    }
-  }
-  
-  // Pokud běžíme v browseru, zkus vytvořit RunPod URL z aktuální URL
-  if (typeof window !== 'undefined') {
+    // 3. RunPod auto-detection
     const hostname = window.location.hostname
-    const href = window.location.href
+    console.log('🔧 Current hostname:', hostname)
     
-    // Extrahuj base ID z jakékoliv RunPod URL
-    const runpodMatch = href.match(/https?:\/\/([^-\.]+)(-\d+)?\.proxy\.runpod\.net/)
-    if (runpodMatch) {
-      const baseId = runpodMatch[1]
-      const apiUrl = `https://${baseId}-8000.proxy.runpod.net`
-      console.log('RunPod base ID extracted, API URL:', apiUrl)
-      return apiUrl
-    }
-    
-    // Pokud hostname obsahuje RunPod pattern
     if (hostname.includes('proxy.runpod.net')) {
-      const baseId = hostname.split('.')[0].replace('-3000', '').replace('-8000', '')
-      const apiUrl = `https://${baseId}-8000.proxy.runpod.net`
-      console.log('RunPod hostname pattern, API URL:', apiUrl)
-      return apiUrl
-    }
-    
-    // Pokud nejsme na localhost, zkus vytvořit RunPod URL
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      const baseId = hostname.split('.')[0].replace('-3000', '')
-      const apiUrl = `https://${baseId}-8000.proxy.runpod.net`
-      console.log('Non-localhost detected, trying RunPod URL:', apiUrl)
+      // Simple pattern: replace -3000 with -8000, or add -8000 if no port
+      const apiHost = hostname.includes('-3000') 
+        ? hostname.replace('-3000', '-8000')
+        : hostname.replace('.proxy.runpod.net', '-8000.proxy.runpod.net')
+      const apiUrl = `https://${apiHost}`
+      console.log('🔧 RunPod detected, API URL:', apiUrl)
       return apiUrl
     }
   }
   
-  // Pouze pro lokální development
-  console.warn('Fallback to localhost - this should only happen in local development!')
+  // 4. Localhost fallback
+  console.log('🔧 Using localhost fallback')
   return 'http://localhost:8000'
 }
 

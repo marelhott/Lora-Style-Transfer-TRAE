@@ -31,8 +31,9 @@ try:
 except ImportError:
     print("Warning: Diffusers not installed. Install with: pip install diffusers transformers")
 
-from model_manager import model_manager
-from ai_pipeline import ai_processor
+# Import tříd místo instancí pro vyřešení circular imports
+from model_manager import ModelManager
+from ai_pipeline import AIProcessor
 import logging
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,10 @@ app = FastAPI(title="LoRA Style Transfer API", version="1.0.0")
 processing_jobs: Dict[str, Dict] = {}
 loaded_models: Dict[str, Any] = {}
 loaded_loras: Dict[str, Any] = {}
+
+# Globální instance - vytvořené zde pro vyřešení circular imports
+model_manager = None
+ai_processor = None
 
 # RunPod persistent storage paths
 MODELS_PATH = Path("/data/models")
@@ -357,6 +362,16 @@ async def process_image(job_id: str):
         job["error_message"] = str(e)
         job["current_step"] = f"Error: {str(e)}"
         job["completed_at"] = datetime.now().isoformat()
+
+def initialize_services():
+    """Inicializace služeb po startu aplikace"""
+    global model_manager, ai_processor
+    model_manager = ModelManager()
+    ai_processor = AIProcessor()
+    logger.info("Services initialized successfully")
+
+# Inicializace při startu
+initialize_services()
 
 if __name__ == "__main__":
     import uvicorn

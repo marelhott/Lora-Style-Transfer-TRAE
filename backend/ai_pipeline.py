@@ -26,7 +26,7 @@ from diffusers import (
 from diffusers.utils import make_image_grid
 import cv2
 
-from model_manager import model_manager
+# Import se provede dynamicky pro vyřešení circular imports
 
 logger = logging.getLogger(__name__)
 
@@ -367,5 +367,4 @@ class AIProcessor:
         
         return stats
 
-# Globální instance
-ai_processor = AIProcessor()
+# Globální instance se vytváří v main.py pro vyřešení circular imports

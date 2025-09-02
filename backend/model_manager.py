@@ -294,5 +294,4 @@ class ModelManager:
         self._clear_gpu_memory()
         logger.info("Cleanup completed")
 
-# Globální instance
-model_manager = ModelManager()
+# Globální instance se vytváří v main.py pro vyřešení circular imports
