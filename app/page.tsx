@@ -425,7 +425,7 @@ export default function Home() {
           <div className="grid grid-cols-12 gap-4 min-h-[calc(100vh-140px)] w-full">
             
             {/* Left Sidebar - Parameters & Presets */}
-            <div className="col-span-3 space-y-4 overflow-y-auto custom-scrollbar pl-4">
+            <div className="col-span-2 space-y-4 overflow-y-auto custom-scrollbar pl-4">
               <ErrorBoundary>
                 <ParameterControls
                   parameters={parameters}
@@ -472,7 +472,7 @@ export default function Home() {
                   onClick={handleStartProcessing}
                 >
                   <Play className="w-4 h-4 mr-2" />
-                  {isProcessing ? "Zpracovávání..." : `Generovat ${parameters.batchCount} ${parameters.batchCount === 1 ? 'obrázek' : parameters.batchCount < 5 ? 'obrázky' : 'obrázků'}`}
+                  {isProcessing ? "Zpracovávání..." : `Generovat ${parameters.batchCount} ${parameters.batchCount === 1 ? 'obrázek' : parameters.batchCount < 5 ? 'obrázky' : 'obrázk��'}`}
                 </Button>
                 <Button variant="outline" size="lg" disabled={convertedResults.length === 0} onClick={handleDownloadAll}>
                   <Download className="w-4 h-4 mr-2" />
