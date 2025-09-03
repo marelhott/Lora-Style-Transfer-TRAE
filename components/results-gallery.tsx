@@ -1,8 +1,3 @@
-
-
-
-
-
 "use client"
 
 import { useState } from "react"
@@ -102,6 +97,10 @@ export function ResultsGallery({
 
   // Get the latest 3 results for the triple view
   const latestResults = results.slice(0, 3)
+  const [mainImageIndex, setMainImageIndex] = useState(0)
+
+  // Current main image to display
+  const mainImage = latestResults[mainImageIndex] || latestResults[0]
 
   return (
     <div className={cn("h-full", className)}>
@@ -155,42 +154,42 @@ export function ResultsGallery({
               
               {/* Triple Image View Mode */}
               {viewMode === "single" && latestResults.length > 0 && (
-                <div className="h-full flex flex-col space-y-4">
-                  {/* Main Container with 3 images - takes most of the height */}
-                  <div className="flex gap-4 flex-1 min-h-[1000px]"> {/* Dramatically increased min-height */}
-                    {/* Main Image (Left Side) */}
-                    <div className="flex-1 relative group">
-                      <div 
-                        className="relative overflow-hidden rounded-lg bg-muted cursor-pointer transition-transform duration-200 hover:scale-[1.02] h-full"
-                        onClick={() => latestResults[0] && onResultSelect(latestResults[0].id)}
-                        onDoubleClick={() => latestResults[0] && openImageInNewWindow(latestResults[0].imageUrl)}
+                <div className="h-full flex flex-col space-y-3">
+                  {/* Main Container with 3 images */}
+                  <div className="flex gap-4 flex-1">
+                    {/* Main Image (Left Side) - takes 3/4 of width */}
+                    <div className="flex-[3] relative group bg-black/5 rounded-lg overflow-hidden">
+                      <div
+                        className="relative h-full cursor-pointer"
+                        onClick={() => mainImage && onResultSelect(mainImage.id)}
+                        onDoubleClick={() => mainImage && openImageInNewWindow(mainImage.imageUrl)}
                       >
-                        <img 
-                          src={latestResults[0]?.imageUrl} 
+                        <img
+                          src={mainImage?.imageUrl}
                           alt="Hlavní generovaný výsledek"
-                          className="w-full h-full object-contain"
+                          className="w-full h-full object-contain transition-transform duration-200 hover:scale-[1.02]"
                         />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                           <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       </div>
-                      
+
                       {/* Action Buttons for Main Image */}
-                      {latestResults[0] && (
-                        <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {mainImage && (
+                        <div className="absolute top-3 right-3 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
                             size="sm"
                             variant="secondary"
                             onClick={(e) => {
                               e.stopPropagation()
-                              onToggleFavorite(latestResults[0].id)
+                              onToggleFavorite(mainImage.id)
                             }}
                           >
-                            <Heart 
+                            <Heart
                               className={cn(
                                 "w-4 h-4",
-                                latestResults[0].isFavorite && "fill-red-500 text-red-500"
-                              )} 
+                                mainImage.isFavorite && "fill-red-500 text-red-500"
+                              )}
                             />
                           </Button>
                           <Button
@@ -198,7 +197,7 @@ export function ResultsGallery({
                             variant="secondary"
                             onClick={(e) => {
                               e.stopPropagation()
-                              onShare(latestResults[0].id)
+                              onShare(mainImage.id)
                             }}
                           >
                             <Share2 className="w-4 h-4" />
@@ -208,7 +207,7 @@ export function ResultsGallery({
                             variant="secondary"
                             onClick={(e) => {
                               e.stopPropagation()
-                              onDownload(latestResults[0].id)
+                              onDownload(mainImage.id)
                             }}
                           >
                             <Download className="w-4 h-4" />
@@ -217,30 +216,37 @@ export function ResultsGallery({
                       )}
                     </div>
 
-                    {/* Thumbnails (Right Side) */}
-                    <div className="w-32 flex flex-col gap-2">
-                      {latestResults.slice(1, 3).map((result, index) => (
+                    {/* Thumbnails (Right Side) - takes 1/4 of width */}
+                    <div className="flex-1 flex flex-col gap-3">
+                      {latestResults.map((result, index) => (
                         <div
                           key={result.id}
-                          className="relative group flex-1"
+                          className="relative group flex-1 min-h-0"
                         >
                           <div
                             className={cn(
-                              "w-full h-full rounded-lg overflow-hidden cursor-pointer transition-all duration-200 border-2",
-                              selectedResultId === result.id 
-                                ? "border-primary shadow-md scale-105" 
-                                : "border-transparent hover:border-muted-foreground/50 hover:scale-102"
+                              "w-full h-full rounded-lg overflow-hidden cursor-pointer transition-all duration-200 border-2 bg-black/5",
+                              mainImageIndex === index
+                                ? "border-primary shadow-lg scale-105"
+                                : "border-transparent hover:border-muted-foreground/50 hover:scale-[1.02]"
                             )}
-                            onClick={() => onResultSelect(result.id)}
+                            onClick={() => {
+                              setMainImageIndex(index)
+                              onResultSelect(result.id)
+                            }}
                             onDoubleClick={() => openImageInNewWindow(result.imageUrl)}
                           >
-                            <img 
-                              src={result.imageUrl} 
-                              alt={`Náhled výsledku ${index + 2}`}
+                            <img
+                              src={result.imageUrl}
+                              alt={`Náhled výsledku ${index + 1}`}
                               className="w-full h-full object-cover"
                             />
+                            {/* Overlay indicator for active thumbnail */}
+                            {mainImageIndex === index && (
+                              <div className="absolute inset-0 border-2 border-primary rounded-lg" />
+                            )}
                           </div>
-                          
+
                           {/* Mini action buttons for thumbnails */}
                           <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button
@@ -257,40 +263,38 @@ export function ResultsGallery({
                           </div>
                         </div>
                       ))}
-                      
-                      {/* Empty slots if less than 3 images */}
-                      {latestResults.length < 3 && (
-                        <div className="flex-1 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center">
-                          <ImageIcon className="w-6 h-6 text-muted-foreground/50" />
+
+                      {/* Empty slots for missing images */}
+                      {Array.from({ length: Math.max(0, 3 - latestResults.length) }).map((_, index) => (
+                        <div
+                          key={`empty-${index}`}
+                          className="flex-1 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center bg-muted/20"
+                        >
+                          <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
                         </div>
-                      )}
-                      {latestResults.length < 2 && (
-                        <div className="flex-1 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center">
-                          <ImageIcon className="w-6 h-6 text-muted-foreground/50" />
-                        </div>
-                      )}
+                      ))}
                     </div>
                   </div>
 
                   {/* Result Info for Selected Image - compact at bottom */}
-                  {selectedResult && (
-                    <div className="p-3 bg-muted/50 rounded-lg flex-shrink-0">
+                  {mainImage && (
+                    <div className="p-3 bg-muted/30 rounded-lg flex-shrink-0">
                       <div className="grid grid-cols-4 gap-4 text-sm">
                         <div>
                           <span className="text-muted-foreground">Seed:</span>
-                          <span className="ml-2 font-mono">{formatSeed(selectedResult.seed)}</span>
+                          <span className="ml-2 font-mono">{formatSeed(mainImage.seed)}</span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Kroky:</span>
-                          <span className="ml-2">{selectedResult.parameters.steps}</span>
+                          <span className="ml-2">{mainImage.parameters.steps}</span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">CFG:</span>
-                          <span className="ml-2">{selectedResult.parameters.cfgScale}</span>
+                          <span className="ml-2">{mainImage.parameters.cfgScale}</span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Vzorkovač:</span>
-                          <span className="ml-2">{selectedResult.parameters.sampler}</span>
+                          <span className="ml-2">{mainImage.parameters.sampler}</span>
                         </div>
                       </div>
                     </div>
