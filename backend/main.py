@@ -243,32 +243,55 @@ async def scan_models_from_path(request: dict):
     try:
         models_path = request.get('models_path', '/data/models')
         loras_path = request.get('loras_path', '/data/loras')
-        
+
         # Security check - only allow paths within /data
         if not models_path.startswith('/data'):
             models_path = '/data/models'
         if not loras_path.startswith('/data'):
             loras_path = '/data/loras'
-        
+
+        logger.info(f"Rescanning models: models_path={models_path}, loras_path={loras_path}")
+
         # Update model manager paths
-        model_manager.models_path = models_path
-        model_manager.loras_path = loras_path
-        
+        model_manager.models_path = Path(models_path)
+        model_manager.loras_path = Path(loras_path)
+
         # Rescan models
         model_manager.scan_models()
-        
+
         # Get updated models list
-        models = model_manager.get_models()
-        
+        models = model_manager.get_available_models()
+
         return {
             "success": True,
             "models_path": models_path,
             "loras_path": loras_path,
             "models_found": len(models),
-            "models": models
+            "models": models,
+            "models_path_exists": model_manager.models_path.exists(),
+            "loras_path_exists": model_manager.loras_path.exists()
         }
     except Exception as e:
         logger.error(f"Error scanning models: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/rescan")
+async def rescan_default_paths():
+    """Jednoduchý rescan s výchozími cestami"""
+    try:
+        logger.info("Rescanning models with default paths")
+        model_manager.scan_models()
+        models = model_manager.get_available_models()
+
+        return {
+            "success": True,
+            "models_path": str(model_manager.models_path),
+            "loras_path": str(model_manager.loras_path),
+            "models_found": len(models),
+            "models": models
+        }
+    except Exception as e:
+        logger.error(f"Error in rescan: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/health")
