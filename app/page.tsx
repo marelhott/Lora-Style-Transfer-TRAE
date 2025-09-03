@@ -223,12 +223,20 @@ export default function Home() {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      const { job_id } = await response.clone().json()
+      const { job_id } = await response.json()
       
       // Poll for status updates
       const pollStatus = async () => {
-        const statusResponse = await fetch(`${getApiBaseUrl()}/api/status/${job_id}`, { cache: 'no-store', signal: AbortSignal.timeout(10000) })
-        const statusData = await statusResponse.clone().json()
+        const statusController = new AbortController()
+        const statusTimeoutId = setTimeout(() => statusController.abort(), 10000)
+
+        const statusResponse = await fetch(`${getApiBaseUrl()}/api/status/${job_id}`, {
+          cache: 'no-store',
+          signal: statusController.signal
+        })
+
+        clearTimeout(statusTimeoutId)
+        const statusData = await statusResponse.json()
         
         setProcessingStatus(statusData.status)
         setCurrentStep(statusData.current_step || "Processing...")
