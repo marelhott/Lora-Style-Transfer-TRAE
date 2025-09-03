@@ -26,41 +26,58 @@ import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 
 // API endpoint for RunPod backend
-// Automatická detekce prostředí
+// Vylepšená automatická detekce pro RunPod v2.0
 const getApiBaseUrl = () => {
-  console.log('🔧 getApiBaseUrl() called')
-  
-  // 1. Environment variable
+  console.log('🔧 getApiBaseUrl() v2.0 called')
+
+  // 1. Environment variable (nejvyšší priorita)
   if (process.env.NEXT_PUBLIC_API_URL) {
     console.log('🔧 Using env variable:', process.env.NEXT_PUBLIC_API_URL)
     return process.env.NEXT_PUBLIC_API_URL
   }
-  
-  // 2. Saved URL from Backend Settings
+
   if (typeof window !== 'undefined') {
-    const savedUrl = localStorage.getItem('backend_url')
-    if (savedUrl) {
-      console.log('🔧 Using saved URL:', savedUrl)
-      return savedUrl
-    }
-    
-    // 3. RunPod auto-detection
     const hostname = window.location.hostname
+    const href = window.location.href
     console.log('🔧 Current hostname:', hostname)
-    
+    console.log('🔧 Current href:', href)
+
+    // 2. RunPod proxy auto-detection (vylepšeno)
     if (hostname.includes('proxy.runpod.net')) {
-      // Simple pattern: replace -3000 with -8000, or add -8000 if no port
-      const apiHost = hostname.includes('-3000') 
-        ? hostname.replace('-3000', '-8000')
-        : hostname.replace('.proxy.runpod.net', '-8000.proxy.runpod.net')
-      const apiUrl = `https://${apiHost}`
-      console.log('🔧 RunPod detected, API URL:', apiUrl)
+      // Robustní parsing RunPod URL
+      const match = hostname.match(/^([^-]+)(?:-(\d+))?\.proxy\.runpod\.net$/)
+      if (match) {
+        const [, baseId, port] = match
+        const apiUrl = `https://${baseId}-8000.proxy.runpod.net`
+        console.log('🔧 RunPod detected - baseId:', baseId, 'currentPort:', port, 'apiUrl:', apiUrl)
+        return apiUrl
+      }
+    }
+
+    // 3. Fly.dev auto-detection
+    if (hostname.includes('.fly.dev')) {
+      // Pattern: xxx.fly.dev -> xxx-api.fly.dev:8000
+      const baseId = hostname.split('.')[0]
+      const apiUrl = `https://${baseId}.fly.dev:8000`
+      console.log('🔧 Fly.dev detected, API URL:', apiUrl)
       return apiUrl
     }
+
+    // 4. Localhost detection
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      console.log('🔧 Localhost detected')
+      return 'http://localhost:8000'
+    }
+
+    // 5. Generic same-host fallback
+    const protocol = window.location.protocol
+    const apiUrl = `${protocol}//${hostname}:8000`
+    console.log('🔧 Generic same-host fallback:', apiUrl)
+    return apiUrl
   }
-  
-  // 4. Localhost fallback
-  console.log('🔧 Using localhost fallback')
+
+  // 6. Server-side fallback
+  console.log('🔧 Server-side fallback')
   return 'http://localhost:8000'
 }
 
