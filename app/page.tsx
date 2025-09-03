@@ -274,11 +274,10 @@ export default function Home() {
   // Load models from API
   const loadModels = async () => {
     try {
-      const apiUrl = getApiBaseUrl()
+      let apiUrl = getApiBaseUrl()
       const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
       const isLocalFallback = apiUrl === 'http://localhost:8000' && hostname && hostname !== 'localhost' && hostname !== '127.0.0.1'
 
-      console.log('��� Current window.location:', typeof window !== 'undefined' ? window.location.href : 'SSR')
 
       // If backend isn't configured and we're not on localhost, avoid a doomed fetch
       if (isLocalFallback) {
