@@ -337,6 +337,11 @@ export default function Home() {
     } catch (error) {
       console.error('Failed to load models:', error)
       setModels([])
+
+      // Pokud je to fetch error na fly.dev, ukáže se zpráva o tom že backend neběží
+      if (typeof window !== 'undefined' && window.location.hostname.includes('.fly.dev')) {
+        console.warn('Backend API nedostupné na fly.dev. Ujistěte se, že backend běží na stejné doméně.')
+      }
     }
   }
 
