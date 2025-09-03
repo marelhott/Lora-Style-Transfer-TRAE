@@ -161,15 +161,14 @@ export default function Home() {
           url: result.imageUrl
         })
       } catch (error) {
-        console.log('Share failed:', error)
         // Fallback: copy to clipboard
-        navigator.clipboard.writeText(result.imageUrl)
-        alert('Odkaz na obrázek zkopírován do schránky!')
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(result.imageUrl)
+        }
       }
-    } else if (result) {
+    } else if (result && navigator.clipboard) {
       // Fallback: copy to clipboard
       navigator.clipboard.writeText(result.imageUrl)
-      alert('Odkaz na obrázek zkopírován do schránky!')
     }
   }
 
