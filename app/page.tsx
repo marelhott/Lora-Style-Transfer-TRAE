@@ -441,8 +441,14 @@ export default function Home() {
                   models={models}
                   selectedModelId={selectedModelId}
                   onModelSelect={setSelectedModelId}
-                  onModelUpload={() => alert("Model upload feature coming soon in full version!")}
-                  onModelDelete={(id) => alert("Model deletion feature coming soon in full version!")}
+                  onModelUpload={() => {
+                    // Model upload není implementován kvůli bezpečnosti
+                    // Modely se nahrávají přímo do /data/models/ přes RunPod interface
+                  }}
+                  onModelDelete={(id) => {
+                    // Model deletion není implementován kvůli bezpečnosti
+                    // Modely se mazají přímo v /data/models/ přes RunPod interface
+                  }}
                 />
               </ErrorBoundary>
             </div>
