@@ -378,6 +378,7 @@ export default function Home() {
                 <ParameterControls
                   parameters={parameters}
                   onParametersChange={setParameters}
+                  presets={presets}
                   onSavePreset={async (name: string, params: ProcessingParameters) => {
                     try {
                       await createPreset({ name, parameters: params })
@@ -387,6 +388,20 @@ export default function Home() {
                   }}
                   onLoadPreset={(preset: any) => {
                     setParameters(preset.parameters)
+                  }}
+                  onDeletePreset={async (presetId: string) => {
+                    try {
+                      await deletePreset({ id: presetId as Id<"presets"> })
+                    } catch (error) {
+                      console.error("Failed to delete preset:", error)
+                    }
+                  }}
+                  onTogglePresetFavorite={async (presetId: string) => {
+                    try {
+                      await togglePresetFavorite({ id: presetId as Id<"presets"> })
+                    } catch (error) {
+                      console.error("Failed to toggle preset favorite:", error)
+                    }
                   }}
                 />
               </ErrorBoundary>
