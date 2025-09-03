@@ -215,19 +215,20 @@ export default function Home() {
       // Start processing job
       const response = await fetch(`${getApiBaseUrl()}/api/process`, {
         method: 'POST',
-        body: formData
+        body: formData,
+        cache: 'no-store'
       })
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      const { job_id } = await response.json()
+      const { job_id } = await response.clone().json()
       
       // Poll for status updates
       const pollStatus = async () => {
-        const statusResponse = await fetch(`${getApiBaseUrl()}/api/status/${job_id}`)
-        const statusData = await statusResponse.json()
+        const statusResponse = await fetch(`${getApiBaseUrl()}/api/status/${job_id}`, { cache: 'no-store', signal: AbortSignal.timeout(10000) })
+        const statusData = await statusResponse.clone().json()
         
         setProcessingStatus(statusData.status)
         setCurrentStep(statusData.current_step || "Processing...")
@@ -278,7 +279,7 @@ export default function Home() {
       const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
       const isLocalFallback = apiUrl === 'http://localhost:8000' && hostname && hostname !== 'localhost' && hostname !== '127.0.0.1'
 
-      // Pokud běžíme mimo localhost a URL spadla na lokální, nezkoušej fetch
+      // Pokud běž��me mimo localhost a URL spadla na lokální, nezkoušej fetch
       if (isLocalFallback) {
         setModels([])
         return
