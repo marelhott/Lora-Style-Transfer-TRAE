@@ -51,11 +51,14 @@ const SAMPLERS = [
   "DPM++ SDE Karras"
 ]
 
-export function ParameterControls({ 
-  parameters, 
-  onParametersChange, 
-  onSavePreset, 
-  onLoadPreset 
+export function ParameterControls({
+  parameters,
+  onParametersChange,
+  onSavePreset,
+  onLoadPreset,
+  presets = [],
+  onDeletePreset = () => {},
+  onTogglePresetFavorite = () => {}
 }: ParameterControlsProps) {
   const [useRandomSeed, setUseRandomSeed] = useState(!parameters.seed)
 
