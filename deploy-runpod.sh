@@ -59,8 +59,14 @@ case "$1" in
         
         # Instalace závislostí pokud potřeba
         if ! python3 -c "import fastapi" 2>/dev/null; then
-            echo "📦 Installing Python dependencies..."
-            pip install fastapi uvicorn torch torchvision diffusers transformers pillow
+            echo "📦 Installing Python dependencies (CUDA 12.1, amd64)..."
+            pip install --no-cache-dir fastapi uvicorn pillow
+            pip install --no-cache-dir torch==2.1.0+cu121 torchvision==0.16.0+cu121 torchaudio==2.1.0+cu121 \
+                --index-url https://download.pytorch.org/whl/cu121
+            pip install --no-cache-dir diffusers==0.21.4 transformers==4.35.2 accelerate==0.24.1 safetensors==0.4.0 compel==2.0.2
+            # Optional optimizations (GPU-dependent)
+            pip install --no-cache-dir xformers==0.0.22.post7 --index-url https://download.pytorch.org/whl/cu121 || true
+            pip install --no-cache-dir bitsandbytes==0.41.2.post2 || true
         fi
         
         # Spuštění standalone backendu
@@ -102,10 +108,14 @@ case "$1" in
         echo "🔧 Starting backend only..."
         cd "$SCRIPT_DIR/backend"
         
-        # Instalace Python závislostí
+        # Instalace Python závislostí pro CUDA 12.1
         if [ -f "requirements.txt" ]; then
-            pip install -r requirements.txt
+            pip install --no-cache-dir -r requirements.txt || true
         fi
+        pip install --no-cache-dir torch==2.1.0+cu121 torchvision==0.16.0+cu121 torchaudio==2.1.0+cu121 \
+            --index-url https://download.pytorch.org/whl/cu121
+        pip install --no-cache-dir xformers==0.0.22.post7 --index-url https://download.pytorch.org/whl/cu121 || true
+        pip install --no-cache-dir bitsandbytes==0.41.2.post2 || true
         
         echo "🚀 Starting Python backend on port 8000..."
         python main.py

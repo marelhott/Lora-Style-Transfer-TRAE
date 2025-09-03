@@ -72,15 +72,17 @@ RUN mkdir -p /tmp/processing
 # Nastavení oprávnění
 RUN chmod +x /app/backend/main.py
 
-# Instalace Node.js pro frontend
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs
+# Instalace Node.js 18 a npm z oficiálního tarballu (bez APT update)
+RUN curl -fsSLO https://nodejs.org/dist/v18.20.4/node-v18.20.4-linux-x64.tar.xz && \
+    tar -xJf node-v18.20.4-linux-x64.tar.xz -C /usr/local --strip-components=1 && \
+    rm node-v18.20.4-linux-x64.tar.xz && \
+    ln -sf /usr/local/bin/node /usr/bin/node && \
+    ln -sf /usr/local/bin/npm /usr/bin/npm && \
+    node --version && npm --version
 
-# Instalace frontend závislostí
+# Instalace frontend závislostí a build
 WORKDIR /app
-RUN npm install
-
-# Build frontend
+RUN npm ci || npm install
 RUN npm run build
 
 # Zpět do backend adresáře

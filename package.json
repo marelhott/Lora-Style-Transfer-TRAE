@@ -8,7 +8,17 @@
     "type": "git",
     "url": "https://github.com/mulenmara1505/lora-style-transfer.git"
   },
-  "keywords": ["ai", "lora", "style-transfer", "neural-networks", "image-processing", "art", "nextjs", "convex", "macaly"],
+  "keywords": [
+    "ai",
+    "lora",
+    "style-transfer",
+    "neural-networks",
+    "image-processing",
+    "art",
+    "nextjs",
+    "convex",
+    "macaly"
+  ],
   "scripts": {
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" --names \"NEXT,PY\" --prefix-colors \"blue,green\"",
     "dev:frontend": "next dev",
@@ -88,6 +98,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "15.2.4",
     "jsdom": "^26.0.0",

@@ -354,7 +354,7 @@ class AIProcessor:
         stats = {
             "device": self.device,
             "dtype": str(self.dtype),
-            "memory_info": model_manager.get_memory_usage()
+            "memory_info": {}  # model_manager se importuje v main.py
         }
         
         if torch.cuda.is_available():
