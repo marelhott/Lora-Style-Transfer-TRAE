@@ -278,16 +278,14 @@ export default function Home() {
       const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
       const isLocalFallback = apiUrl === 'http://localhost:8000' && hostname && hostname !== 'localhost' && hostname !== '127.0.0.1'
 
-
-      // If backend isn't configured and we're not on localhost, avoid a doomed fetch
+      // Pokud běžíme mimo localhost a URL spadla na lokální, nezkoušej fetch
       if (isLocalFallback) {
         setModels([])
         return
       }
 
-      // Special handling pro fly.dev - backend může běžet na jiné cestě
+      // Fly.dev: vyzkoušej více variant cesty
       if (hostname.includes('.fly.dev')) {
-        // Zkus různé varianty URL pro fly.dev
         const variants = [
           `${window.location.protocol}//${hostname}/api/models`,
           `${window.location.protocol}//${hostname}:8000/api/models`,
@@ -298,14 +296,14 @@ export default function Home() {
           try {
             const testResponse = await fetch(testUrl, {
               method: 'HEAD',
+              cache: 'no-store',
               signal: AbortSignal.timeout(3000)
             })
-            if (testResponse.ok || testResponse.status === 405) { // 405 Method Not Allowed je OK pro HEAD
+            if (testResponse.ok || testResponse.status === 405) {
               apiUrl = testUrl.replace('/api/models', '')
               break
             }
-          } catch (e) {
-            // Pokračuj na další variantu
+          } catch {
             continue
           }
         }
@@ -314,31 +312,38 @@ export default function Home() {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 10000)
 
-      const response = await fetch(`${apiUrl}/api/models`, {
+      const res = await fetch(`${apiUrl}/api/models`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store',
         signal: controller.signal
       })
 
       clearTimeout(timeoutId)
 
+      const resClone = res.clone()
 
-      if (response.ok) {
-        const modelsData = await response.json()
-        setModels(modelsData)
+      if (res.ok) {
+        try {
+          const modelsData = await resClone.json()
+          setModels(Array.isArray(modelsData) ? modelsData : [])
+        } catch (e) {
+          console.error('Failed to parse models JSON:', e)
+          setModels([])
+        }
       } else {
-        const errorText = await response.text()
-        console.error('Failed to load models: HTTP', response.status)
+        try {
+          const errorText = await resClone.text()
+          console.error('Failed to load models: HTTP', res.status, errorText?.slice(0, 200))
+        } catch {
+          console.error('Failed to load models: HTTP', res.status)
+        }
         setModels([])
       }
     } catch (error) {
       console.error('Failed to load models:', error)
       setModels([])
 
-      // Pokud je to fetch error na fly.dev, ukáže se zpráva o tom že backend neběží
       if (typeof window !== 'undefined' && window.location.hostname.includes('.fly.dev')) {
         console.warn('Backend API nedostupné na fly.dev. Ujistěte se, že backend běží na stejné doméně.')
       }
