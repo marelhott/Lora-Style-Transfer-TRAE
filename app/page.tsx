@@ -272,6 +272,30 @@ export default function Home() {
     }
   }
 
+  // Debug funkce pro diagnostiku problémů
+  const debugBackend = async () => {
+    try {
+      const apiUrl = getApiBaseUrl()
+      const response = await fetch(`${apiUrl}/api/debug/paths`, { cache: 'no-store' })
+      if (response.ok) {
+        const debugInfo = await response.json()
+        console.log("🔍 Backend Debug Info:", debugInfo)
+
+        // Pokud nejsou modely nalezeny, zkus rescan
+        if (debugInfo.available_models === 0) {
+          console.warn("⚠️ Žádné modely nenalezeny, zkouším rescan...")
+          const rescanResponse = await fetch(`${apiUrl}/api/rescan`, { cache: 'no-store' })
+          if (rescanResponse.ok) {
+            const rescanResult = await rescanResponse.json()
+            console.log("🔄 Rescan result:", rescanResult)
+          }
+        }
+      }
+    } catch (error) {
+      console.error("❌ Debug backend failed:", error)
+    }
+  }
+
   // Load models from API
   const loadModels = async () => {
     try {
@@ -279,7 +303,7 @@ export default function Home() {
       const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
       const isLocalFallback = apiUrl === 'http://localhost:8000' && hostname && hostname !== 'localhost' && hostname !== '127.0.0.1'
 
-      // Pokud běž��me mimo localhost a URL spadla na lokální, nezkoušej fetch
+      // Pokud běžíme mimo localhost a URL spadla na lokální, nezkoušej fetch
       if (isLocalFallback) {
         setModels([])
         return
