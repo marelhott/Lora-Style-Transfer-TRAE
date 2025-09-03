@@ -9,16 +9,10 @@ export async function GET() {
       success: true,
       mode: "mock_rescan",
       models_path: "/data/models",
-      loras_path: "/data/loras", 
-      models_found: 5, // mock počet
-      message: "Mock rescan completed - 5 models found",
-      models: [
-        { id: "full_realistic_vision_v5", type: "full" },
-        { id: "full_deliberate_v2", type: "full" },
-        { id: "lora_fantasy_style", type: "lora" },
-        { id: "lora_cyberpunk_2077", type: "lora" },
-        { id: "lora_studio_ghibli", type: "lora" }
-      ]
+      loras_path: "/data/loras",
+      models_found: 0, // prázdné - čeká na persist disk
+      message: "Mock rescan completed - žádné modely nenalezeny, připojte persistent disk s modely",
+      models: []
     })
   } catch (error) {
     console.error('Error in rescan API:', error)
