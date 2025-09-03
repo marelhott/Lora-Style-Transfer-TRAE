@@ -288,6 +288,12 @@ export default function Home() {
           if (rescanResponse.ok) {
             const rescanResult = await rescanResponse.json()
             console.log("🔄 Rescan result:", rescanResult)
+
+            // Pokud rescan našel modely, reload je
+            if (rescanResult.models_found > 0) {
+              console.log("✅ Modely nalezeny po rescanu, reloaduji...")
+              setTimeout(() => loadModels(), 1000)
+            }
           }
         }
       }
