@@ -98,10 +98,10 @@ export function ImageUpload({
         {uploadedImage ? (
           <div className="space-y-2">
             <div className="relative group">
-              <img 
-                src={uploadedImage} 
-                alt="Uploaded" 
-                className="w-full h-20 object-cover rounded-lg" // Further reduced height from h-32 to h-20
+              <img
+                src={uploadedImage}
+                alt="Uploaded"
+                className="w-full h-16 object-cover rounded-lg" // Compact thumbnail
               />
               <Button
                 variant="destructive"
