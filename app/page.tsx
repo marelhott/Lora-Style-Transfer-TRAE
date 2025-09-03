@@ -45,10 +45,11 @@ const getApiBaseUrl = () => {
       }
     }
 
-    // 3. Fly.dev auto-detection
+    // 3. Fly.dev auto-detection - porty se mapují automaticky
     if (hostname.includes('.fly.dev')) {
-      const baseId = hostname.split('.')[0]
-      return `https://${baseId}.fly.dev:8000`
+      // Pro fly.dev prostředí vracíme současný hostname bez portu
+      // Backend běží na stejné doméně, ale jiné cestě
+      return `https://${hostname}`
     }
 
     // 4. Localhost detection
