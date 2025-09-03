@@ -288,10 +288,7 @@ export default function Home() {
       }
 
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => {
-        console.error('⏰ Fetch timeout after 10s')
-        controller.abort()
-      }, 10000)
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
 
       const response = await fetch(`${apiUrl}/api/models`, {
         method: 'GET',
@@ -304,25 +301,17 @@ export default function Home() {
 
       clearTimeout(timeoutId)
 
-      console.log('📡 Response status:', response.status)
-      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()))
 
       if (response.ok) {
         const modelsData = await response.json()
-        console.log('✅ Loaded models:', modelsData.length)
         setModels(modelsData)
       } else {
         const errorText = await response.text()
-        console.error('❌ Failed to load models: HTTP', response.status, errorText)
+        console.error('Failed to load models: HTTP', response.status)
         setModels([])
       }
     } catch (error) {
-      console.error('💥 Failed to load models:', error)
-      console.error('💥 Error details:', {
-        name: (error as any).name,
-        message: (error as any).message,
-        stack: (error as any).stack
-      })
+      console.error('Failed to load models:', error)
       setModels([])
     }
   }
