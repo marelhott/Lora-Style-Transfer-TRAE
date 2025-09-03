@@ -421,11 +421,11 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       {/* Main Layout */}
       <ErrorBoundary>
-        <div className="container mx-auto px-4 py-6">
-          <div className="grid grid-cols-12 gap-6 min-h-[calc(100vh-140px)]">
+        <div className="w-full px-0 py-6">
+          <div className="grid grid-cols-12 gap-6 min-h-[calc(100vh-140px)] w-full">
             
             {/* Left Sidebar - Parameters & Presets */}
-            <div className="col-span-2 space-y-4 overflow-y-auto custom-scrollbar">
+            <div className="col-span-3 space-y-4 overflow-y-auto custom-scrollbar pl-4">
               <ErrorBoundary>
                 <ParameterControls
                   parameters={parameters}
@@ -461,7 +461,7 @@ export default function Home() {
             </div>
 
             {/* Center - Main Content */}
-            <div className="col-span-8 space-y-4">
+            <div className="col-span-6 space-y-4">
               
               {/* Processing Controls - moved above results */}
               <div className="flex space-x-4">
@@ -508,7 +508,7 @@ export default function Home() {
             </div>
 
             {/* Right Sidebar - Models only */}
-            <div className="col-span-2 space-y-4 overflow-y-auto custom-scrollbar">
+            <div className="col-span-3 space-y-4 overflow-y-auto custom-scrollbar pr-4">
               {/* Image Upload - moved to right sidebar */}
               <ErrorBoundary>
                 <ImageUpload
