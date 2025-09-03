@@ -65,8 +65,9 @@ COPY postcss.config.js /app/
 COPY components.json /app/
 COPY .env /app/
 
-# Vytvoření adresářů pro data
-RUN mkdir -p /data/models /data/loras /tmp/processing
+# Vytvoření dočasných adresářů (data budou namountována z persistentního disku)
+RUN mkdir -p /tmp/processing
+# NOTE: /data bude namountován z RunPod persistentního disku
 
 # Nastavení oprávnění
 RUN chmod +x /app/backend/main.py
