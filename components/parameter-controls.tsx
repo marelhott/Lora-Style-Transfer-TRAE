@@ -248,28 +248,18 @@ export function ParameterControls({
           <Separator />
 
           {/* Preset Controls */}
-          <div className="flex space-x-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex-1"
-              onClick={onSavePreset}
-            >
-              <Heart className="w-4 h-4 mr-1" />
-              Uložit
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex-1"
-              onClick={onLoadPreset}
-            >
-              <UploadIcon className="w-4 h-4 mr-1" />
-              Načíst
-            </Button>
-          </div>
         </div>
       </Card>
+
+      {/* Preset Manager - nahrazuje stará tlačítka */}
+      <PresetManager
+        presets={presets}
+        onLoadPreset={onLoadPreset}
+        onSavePreset={onSavePreset}
+        onDeletePreset={onDeletePreset}
+        onToggleFavorite={onTogglePresetFavorite}
+        currentParameters={parameters}
+      />
     </div>
   )
 }
