@@ -325,11 +325,17 @@ export default function Home() {
 
         for (const testUrl of variants) {
           try {
+            const testController = new AbortController()
+            const testTimeoutId = setTimeout(() => testController.abort(), 3000)
+
             const testResponse = await fetch(testUrl, {
               method: 'HEAD',
               cache: 'no-store',
-              signal: AbortSignal.timeout(3000)
+              signal: testController.signal
             })
+
+            clearTimeout(testTimeoutId)
+
             if (testResponse.ok || testResponse.status === 405) {
               apiUrl = testUrl.replace('/api/models', '')
               break
@@ -352,11 +358,9 @@ export default function Home() {
 
       clearTimeout(timeoutId)
 
-      const resClone = res.clone()
-
       if (res.ok) {
         try {
-          const modelsData = await resClone.json()
+          const modelsData = await res.json()
           setModels(Array.isArray(modelsData) ? modelsData : [])
         } catch (e) {
           console.error('Failed to parse models JSON:', e)
@@ -364,7 +368,7 @@ export default function Home() {
         }
       } else {
         try {
-          const errorText = await resClone.text()
+          const errorText = await res.text()
           console.error('Failed to load models: HTTP', res.status, errorText?.slice(0, 200))
         } catch {
           console.error('Failed to load models: HTTP', res.status)
