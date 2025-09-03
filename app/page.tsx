@@ -17,7 +17,6 @@ import { ParameterControls, ProcessingParameters } from "@/components/parameter-
 import { ProgressTracker, ProcessingStatus } from "@/components/progress-tracker"
 import { ModelManager, AIModel } from "@/components/model-manager"
 import { ResultsGallery, GeneratedResult } from "@/components/results-gallery"
-import { BackendSettings } from "@/components/backend-settings"
 
 import { ErrorBoundary } from "@/components/error-boundary"
 
@@ -272,7 +271,7 @@ export default function Home() {
       const isLocalFallback = apiUrl === 'http://localhost:8000' && hostname && hostname !== 'localhost' && hostname !== '127.0.0.1'
 
       console.log('🔍 Loading models from:', apiUrl)
-      console.log('🌐 Current window.location:', typeof window !== 'undefined' ? window.location.href : 'SSR')
+      console.log('��� Current window.location:', typeof window !== 'undefined' ? window.location.href : 'SSR')
 
       // If backend isn't configured and we're not on localhost, avoid a doomed fetch
       if (isLocalFallback) {
@@ -411,11 +410,6 @@ export default function Home() {
 
             {/* Right Sidebar - Models only */}
             <div className="col-span-3 space-y-4 overflow-y-auto custom-scrollbar">
-              {/* Backend Settings */}
-              <ErrorBoundary>
-                <BackendSettings />
-              </ErrorBoundary>
-
               {/* Image Upload - moved to right sidebar */}
               <ErrorBoundary>
                 <ImageUpload
