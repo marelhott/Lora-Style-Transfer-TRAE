@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Settings, Heart, Upload as UploadIcon, Download } from "lucide-react"
+import { PresetManager, Preset } from "@/components/preset-manager"
 
 export interface ProcessingParameters {
   strength: number
@@ -23,8 +24,11 @@ export interface ProcessingParameters {
 interface ParameterControlsProps {
   parameters: ProcessingParameters
   onParametersChange: (parameters: ProcessingParameters) => void
-  onSavePreset: () => void
-  onLoadPreset: () => void
+  onSavePreset: (name: string, parameters: ProcessingParameters) => void
+  onLoadPreset: (preset: Preset) => void
+  presets?: Preset[]
+  onDeletePreset?: (presetId: string) => void
+  onTogglePresetFavorite?: (presetId: string) => void
 }
 
 const SAMPLERS = [
