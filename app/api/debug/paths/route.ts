@@ -13,8 +13,8 @@ export async function GET() {
       models_path_exists: existsSync("/data/models"),
       loras_path_exists: existsSync("/data/loras"),
       current_working_dir: process.cwd(),
-      model_metadata_count: 5, // mock count
-      available_models: 5, // mock count
+      model_metadata_count: 0, // prázdné - čeká na persist disk
+      available_models: 0, // prázdné - čeká na persist disk
       backend_status: "mock_mode"
     }
 
