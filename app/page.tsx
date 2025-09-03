@@ -89,6 +89,13 @@ export default function Home() {
   const createResults = useMutation(api.results.createResults)
   const toggleResultFavorite = useMutation(api.results.toggleFavorite)
 
+  // Preset management
+  const presets = useQuery(api.presets.getPresets) || []
+  const createPreset = useMutation(api.presets.createPreset)
+  const updatePreset = useMutation(api.presets.updatePreset)
+  const deletePreset = useMutation(api.presets.deletePreset)
+  const togglePresetFavorite = useMutation(api.presets.toggleFavorite)
+
   // State management
   const [models, setModels] = useState<AIModel[]>([])
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
@@ -371,8 +378,16 @@ export default function Home() {
                 <ParameterControls
                   parameters={parameters}
                   onParametersChange={setParameters}
-                  onSavePreset={() => console.log("Uložit předvolbu")}
-                  onLoadPreset={() => console.log("Načíst předvolbu")}
+                  onSavePreset={async (name: string, params: ProcessingParameters) => {
+                    try {
+                      await createPreset({ name, parameters: params })
+                    } catch (error) {
+                      console.error("Failed to save preset:", error)
+                    }
+                  }}
+                  onLoadPreset={(preset: any) => {
+                    setParameters(preset.parameters)
+                  }}
                 />
               </ErrorBoundary>
 
