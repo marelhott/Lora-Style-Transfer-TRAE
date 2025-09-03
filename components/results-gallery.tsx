@@ -68,26 +68,44 @@ export function ResultsGallery({
           <head>
             <title>Neural Art Studio - Obrázek v plné velikosti</title>
             <style>
-              body { 
-                margin: 0; 
-                padding: 20px; 
-                background: #000; 
-                display: flex; 
-                justify-content: center; 
-                align-items: center; 
+              body {
+                margin: 0;
+                padding: 0;
+                background: #000;
+                display: flex;
+                justify-content: center;
+                align-items: center;
                 min-height: 100vh;
+                cursor: pointer;
+                overflow: hidden;
               }
-              img { 
-                max-width: 100%; 
-                max-height: 100vh; 
+              img {
+                max-width: 100vw;
+                max-height: 100vh;
                 object-fit: contain;
-                border-radius: 8px;
-                box-shadow: 0 10px 30px rgba(255,255,255,0.1);
+                transition: transform 0.2s ease;
+              }
+              img:hover {
+                transform: scale(1.05);
+              }
+              .close-hint {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                color: white;
+                background: rgba(0,0,0,0.7);
+                padding: 8px 12px;
+                border-radius: 4px;
+                font-family: system-ui, -apple-system, sans-serif;
+                font-size: 12px;
+                opacity: 0.8;
+                pointer-events: none;
               }
             </style>
           </head>
-          <body>
-            <img src="${imageUrl}" alt="Obrázek v plné velikosti" />
+          <body onclick="window.close()">
+            <div class="close-hint">Klikněte kamkoliv pro zavření</div>
+            <img src="${imageUrl}" alt="Obrázek v plné velikosti" ondblclick="window.close()" />
           </body>
         </html>
       `)
