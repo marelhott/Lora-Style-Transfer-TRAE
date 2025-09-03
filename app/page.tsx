@@ -372,6 +372,9 @@ export default function Home() {
       if (typeof window !== 'undefined' && window.location.hostname.includes('.fly.dev')) {
         console.warn('Backend API nedostupné na fly.dev. Ujistěte se, že backend běží na stejné doméně.')
       }
+
+      // Spustit debug diagnostiku při problémech
+      setTimeout(() => debugBackend(), 2000)
     }
   }
 
