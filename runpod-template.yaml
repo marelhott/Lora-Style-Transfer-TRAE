@@ -1,0 +1,65 @@
+# RunPod Template Configuration
+# Pro LoRA Style Transfer aplikaci
+
+name: "lora-style-transfer"
+description: "AI-powered LoRA style transfer with Next.js frontend and Python backend"
+readme: |
+  # LoRA Style Transfer na RunPod
+  
+  ## Použití:
+  1. Připojte persistentní disk k /data
+  2. Nahrajte svoje modely do /data/models/ a /data/loras/
+  3. Spusťte template
+  4. Přístup přes RunPod proxy URL
+  
+  ## Porty:
+  - 3000: Frontend (Next.js)
+  - 8000: Backend API (Python FastAPI)
+  
+  ## Požadavky:
+  - GPU: RTX 4090+ (12GB+ VRAM)
+  - RAM: 16GB+
+  - Storage: Persistentní disk pro modely
+
+# Docker setup
+containerDiskInGb: 50
+dockerArgs: ""
+env:
+  - name: "PYTORCH_CUDA_ALLOC_CONF"
+    value: "max_split_size_mb:512"
+  - name: "OMP_NUM_THREADS"
+    value: "4"
+  - name: "CUDA_LAUNCH_BLOCKING"
+    value: "0"
+
+# Volumes - KRITICKÉ pro správné fungování
+volumeMounts:
+  - name: "persistent-data"
+    mountPath: "/data"
+    subPath: ""
+
+# Network
+ports:
+  - name: "frontend"
+    containerPort: 3000
+    protocol: "http"
+    public: true
+  - name: "backend-api"
+    containerPort: 8000
+    protocol: "http"
+    public: true
+
+# Resource requirements
+gpuCount: 1
+gpuType: "RTX4090"  # nebo "A100"
+memoryInGb: 16
+vcpuCount: 4
+
+# Docker image
+image: "mulenmara1505/lora-style-transfer:latest"
+
+# Startup command - pomocí docker-entrypoint.sh
+command: ["/app/docker-entrypoint.sh"]
+
+# Health check
+startupTimeoutInSeconds: 300
