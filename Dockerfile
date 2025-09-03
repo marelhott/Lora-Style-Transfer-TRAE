@@ -1,4 +1,4 @@
-# RunPod Dockerfile pro LoRA Style Transfer
+# RunPod Dockerfile pro LoRA Style Transfer - Clean Version
 # Optimalizováno pro AMD64 architekturu s CUDA podporou
 
 FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
@@ -30,6 +30,8 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     libgoogle-perftools4 \
     libtcmalloc-minimal4 \
+    ca-certificates \
+    xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Vytvoření symbolického odkazu pro python
@@ -50,6 +52,14 @@ RUN pip install -r requirements.txt
 RUN pip install xformers==0.0.22.post7 --index-url https://download.pytorch.org/whl/cu121
 RUN pip install bitsandbytes==0.41.2.post2
 
+# Instalace Node.js 18 a npm z oficiálního tarballu
+RUN curl -fsSLO https://nodejs.org/dist/v18.20.4/node-v18.20.4-linux-x64.tar.xz && \
+    tar -xJf node-v18.20.4-linux-x64.tar.xz -C /usr/local --strip-components=1 && \
+    rm node-v18.20.4-linux-x64.tar.xz && \
+    ln -sf /usr/local/bin/node /usr/bin/node && \
+    ln -sf /usr/local/bin/npm /usr/bin/npm && \
+    node --version && npm --version
+
 # Kopírování aplikace
 COPY backend/ /app/backend/
 COPY app/ /app/app/
@@ -65,24 +75,15 @@ COPY postcss.config.js /app/
 COPY components.json /app/
 COPY .env /app/
 
-# Vytvoření dočasných adresářů (data budou namountována z persistentního disku)
+# Vytvoření dočasných adresářů
 RUN mkdir -p /tmp/processing
-# NOTE: /data bude namountován z RunPod persistentního disku
 
 # Nastavení oprávnění
 RUN chmod +x /app/backend/main.py
 
-# Instalace Node.js 18 a npm z oficiálního tarballu (bez APT update)
-RUN curl -fsSLO https://nodejs.org/dist/v18.20.4/node-v18.20.4-linux-x64.tar.xz && \
-    tar -xJf node-v18.20.4-linux-x64.tar.xz -C /usr/local --strip-components=1 && \
-    rm node-v18.20.4-linux-x64.tar.xz && \
-    ln -sf /usr/local/bin/node /usr/bin/node && \
-    ln -sf /usr/local/bin/npm /usr/bin/npm && \
-    node --version && npm --version
-
 # Instalace frontend závislostí a build
 WORKDIR /app
-RUN npm ci || npm install
+RUN npm ci --only=production
 RUN npm run build
 
 # Zpět do backend adresáře

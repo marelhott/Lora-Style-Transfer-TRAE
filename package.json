@@ -1,5 +1,5 @@
 {
-  "name": "lora-style-transfer",
+  "name": "lora-style-transfer-new",
   "version": "1.0.0",
   "private": true,
   "description": "AI-powered LoRA style transfer application built with Next.js and Convex on the Macaly platform",

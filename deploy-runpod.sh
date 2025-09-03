@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# RunPod Deployment Script pro LoRA Style Transfer
+# RunPod Deployment Script pro LoRA Style Transfer - Clean Version
 # Podporuje jak Docker tak standalone deployment
 
 set -e
@@ -8,8 +8,8 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo "🚀 LoRA Style Transfer - RunPod Deployment"
-echo "=========================================="
+echo "🚀 LoRA Style Transfer - Clean RunPod Deployment"
+echo "================================================"
 
 # Detekce prostředí
 if [ -f "/.dockerenv" ]; then

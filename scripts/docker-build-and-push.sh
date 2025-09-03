@@ -1,17 +1,18 @@
 #!/bin/bash
 
-# Docker Build and Push script pro LoRA Style Transfer
+# Docker Build and Push script pro LoRA Style Transfer - Clean Version
 # Použití: ./scripts/docker-build-and-push.sh [tag]
 
 set -e
 
 # Konfigurace
 DOCKER_HUB_USERNAME="${DOCKER_HUB_USERNAME:-mulenmara1505}"
-IMAGE_NAME="lora-style-transfer"
+IMAGE_NAME="lora-style-transfer-new"
 TAG="${1:-latest}"
 FULL_IMAGE_NAME="${DOCKER_HUB_USERNAME}/${IMAGE_NAME}:${TAG}"
 
 echo "🚀 Building Docker image: ${FULL_IMAGE_NAME}"
+echo "📦 Clean build for RunPod deployment"
 
 # Kontrola jestli jsme v root adresáři projektu
 if [ ! -f "Dockerfile" ]; then
@@ -26,6 +27,7 @@ docker build \
     --tag "${FULL_IMAGE_NAME}" \
     --tag "${DOCKER_HUB_USERNAME}/${IMAGE_NAME}:latest" \
     --progress=plain \
+    --no-cache \
     .
 
 echo "✅ Build completed: ${FULL_IMAGE_NAME}"
@@ -54,4 +56,8 @@ docker images "${FULL_IMAGE_NAME}" --format "table {{.Repository}}\t{{.Tag}}\t{{
 
 echo ""
 echo "🚀 RunPod template command:"
-echo "docker run -d --gpus all -p 3000:3000 -p 8000:8000 -v /workspace:/data ${FULL_IMAGE_NAME}"
+echo "docker run -d --gpus all -p 3000:3000 -p 8000:8000 -v /data:/data ${FULL_IMAGE_NAME}"
+echo ""
+echo "🔧 Environment variables for RunPod:"
+echo "DATA_PATH=/data"
+echo "NEXT_PUBLIC_API_URL=https://<RUNPOD_ID>-8000.proxy.runpod.net"

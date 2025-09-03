@@ -1,198 +1,190 @@
-# 🎨 LoRA Style Transfer
+# 🎨 LoRA Style Transfer - Clean Version
 
-**AI-powered style transfer aplikace s LoRA modely, Next.js frontend a Python backend optimalizovaná pro RunPod.**
+**AI-powered LoRA style transfer application** built with Next.js, FastAPI, and Convex. Optimized for RunPod deployment with persistent disk support.
 
-![LoRA Style Transfer](https://img.shields.io/badge/AI-Style%20Transfer-blue) ![RunPod](https://img.shields.io/badge/Platform-RunPod-green) ![Next.js](https://img.shields.io/badge/Frontend-Next.js-black) ![Python](https://img.shields.io/badge/Backend-Python-yellow)
+## 🚀 Quick Start - RunPod Deployment
 
-## ✨ **Funkce**
-
-- 🎨 **AI Style Transfer** pomocí Stable Diffusion + LoRA modelů
-- 🖼️ **Real-time preview** s progress tracking
-- 📱 **Responzivní UI** postavené na Next.js a Tailwind CSS
-- 🔥 **GPU optimalizace** pro rychlé generování
-- 💾 **Persistentní storage** pro modely a výsledky
-- 🚀 **RunPod ready** - jednoduchý deployment
-
-## 🚀 **Quick Start**
-
-### **Pro vývojáře v Cursor IDE**
-📖 **[CURSOR_SETUP.md](CURSOR_SETUP.md)** - kompletní 1-minute setup guide
-
-### **Pro RunPod deployment**
-
-### **Způsob 1: Standalone (DOPORUČENO)**
+### **1. Clone & Setup**
 ```bash
-# V RunPod terminálu
-git clone https://github.com/marelhott/Lora-Style-Transfer.git
-cd Lora-Style-Transfer
-chmod +x start-runpod.sh
-./start-runpod.sh install  # Jednou
-./start-runpod.sh auto     # Spuštění
+git clone https://github.com/mulenmara1505/lora-style-transfer-new.git
+cd lora-style-transfer-new
 ```
 
-### **Způsob 2: Docker Template**
-```bash
-# RunPod template image
-mulenmara1505/lora-style-transfer:latest
+### **2. RunPod Template Configuration**
+```yaml
+# runpod-template.yaml
+volumeMounts:
+  - name: "persistent-data"
+    mountPath: "/data"
+    subPath: ""
 
-# Volume mapping
-/data -> /data  # KRITICKÉ pro modely!
+ports:
+  - containerPort: 3000  # Frontend
+    public: true
+  - containerPort: 8000  # Backend API
+    public: true
 
-# Porty
-3000 (frontend), 8000 (backend)
+env:
+  - name: "DATA_PATH"
+    value: "/data"
+  - name: "NEXT_PUBLIC_API_URL"
+    value: "https://<RUNPOD_ID>-8000.proxy.runpod.net"
 ```
 
-### **Způsob 3: Manual Setup**
+### **3. Deploy to RunPod**
 ```bash
-# Backend
-python runpod_backend.py
+# Option A: Docker (recommended)
+docker run -d \
+  --gpus all \
+  -p 3000:3000 \
+  -p 8000:8000 \
+  -v /data:/data \
+  -e DATA_PATH=/data \
+  -e NEXT_PUBLIC_API_URL=https://<RUNPOD_ID>-8000.proxy.runpod.net \
+  mulenmara1505/lora-style-transfer-new:latest
 
-# Frontend (jiný terminál)  
-npm run build && npm start
+# Option B: Standalone
+./deploy-runpod.sh standalone
 ```
 
-## 📁 **Struktura modelů**
+## 📁 Model Structure
 
-Vaše modely musí být v persistentním disku:
-
+Place your models in the persistent disk:
 ```
 /data/
-├── models/              # Stable Diffusion modely
+├── models/           # Stable Diffusion models
 │   ├── sd-v1-5.safetensors
 │   ├── realistic-vision.safetensors
 │   └── dreamshaper.ckpt
-└── loras/               # LoRA modely
+└── loras/            # LoRA models
     ├── portrait.safetensors
     ├── anime-style.pt
     └── landscape.safetensors
 ```
 
-## 🎮 **Hardware požadavky**
+## 🔧 Features
 
-### **Minimální:**
-- **GPU:** RTX 4090, Tesla V100 (12GB+ VRAM)
-- **RAM:** 16GB
-- **Storage:** 50GB+ pro aplikaci + modely
+### ✅ **Frontend (Next.js)**
+- **Parameter Controls** - strength, CFG, steps, sampler
+- **Image Upload** - drag & drop, file picker
+- **Model Manager** - select from available models
+- **Progress Tracker** - real-time processing status
+- **Results Gallery** - view, download, favorites
+- **Preset Manager** - save/load parameter presets
 
-### **Doporučené:**
-- **GPU:** RTX 4090, A100 (24GB+ VRAM)  
-- **RAM:** 32GB
-- **Storage:** 200GB+ persistentní disk
+### ✅ **Backend (FastAPI)**
+- **`/api/models`** - list available models
+- **`/api/process`** - start AI processing
+- **`/api/status/{job_id}`** - track job progress
+- **`/api/health`** - health check + GPU info
+- **`/api/rescan`** - rescan model directories
 
-## 🛠️ **Development**
+### ✅ **Database (Convex)**
+- **Results** - store generated images
+- **Presets** - store parameter presets
+- **Real-time updates** - automatic UI refresh
 
-### **Local Setup**
+## 🛠️ Local Development
+
+### **Frontend Only**
 ```bash
-# Clone repository
-git clone https://github.com/marelhott/Lora-Style-Transfer.git
-cd Lora-Style-Transfer
+npm install
+npm run dev:frontend-only
+# http://localhost:3000
+```
 
-# Backend setup
+### **Full Stack**
+```bash
+# Terminal 1: Frontend
+npm run dev:frontend-only
+
+# Terminal 2: Backend
 cd backend
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 python main.py
-
-# Frontend setup (nový terminál)
-npm install
-npm run dev
+# http://localhost:8000
 ```
 
-### **Environment Variables**
+## 🐳 Docker Build
+
+### **Build Image**
 ```bash
-# Optional - automatická detekce je preferovaná
-NEXT_PUBLIC_API_URL=http://localhost:8000
-DATA_PATH=/data
-PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+chmod +x scripts/docker-build-and-push.sh
+./scripts/docker-build-and-push.sh latest
 ```
 
-## 📚 **Deployment módy**
-
-| Mód | Popis | Vhodné pro |
-|-----|-------|------------|
-| **Standalone** | Jeden Python script | RunPod, jednoduchost |
-| **Docker** | Kontejner s oběma | Produkce, izolace |
-| **Hybrid** | Backend + frontend samostatně | Development, flexibilita |
-| **Manual** | Ruční setup | Customizace, debugging |
-
-## 🔧 **Troubleshooting**
-
-### **Nejčastější problémy:**
-
-**"Persistentní disk nenalezen"**
+### **Test Locally**
 ```bash
-# Zkontrolujte mount v RunPod template:
-volumeMounts:
-  - mountPath: "/data"
+docker run --rm -it \
+  -p 3000:3000 \
+  -p 8000:8000 \
+  mulenmara1505/lora-style-transfer-new:latest
 ```
 
-**"Žádné modely nenalezeny"**
+## 🔍 Troubleshooting
+
+### **"No models found"**
 ```bash
-# Nahrajte modely do správných složek
-ls -la /data/models/     # .safetensors, .ckpt
-ls -la /data/loras/      # .safetensors, .pt
+# Check model paths
+curl http://localhost:8000/api/debug/paths
+
+# Rescan models
+curl -X GET http://localhost:8000/api/rescan
 ```
 
-**"Backend se nespustí"**
+### **"Frontend can't connect to backend"**
 ```bash
-# Test závislostí
-./start-runpod.sh install
-python -c "import torch, diffusers; print('OK')"
-```
-
-### **Debug příkazy:**
-```bash
-# Kompletní diagnostika
-./start-runpod.sh help
-
-# Test systému
+# Check backend health
 curl http://localhost:8000/api/health
 
-# GPU status
+# Set explicit API URL
+export NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+### **"CUDA not available"**
+```bash
+# Check GPU
 nvidia-smi
+
+# Test PyTorch
+python3 -c "import torch; print(torch.cuda.is_available())"
 ```
 
-## 📖 **Dokumentace**
+## 📊 Hardware Requirements
 
-- 💻 [Cursor IDE Setup](CURSOR_SETUP.md) - rychlý start pro vývojáře
-- 📋 [RunPod Deployment v2.0](RUNPOD_DEPLOYMENT_V2.md) - produkční nasazení
-- 🎮 [Hardware Requirements & Troubleshooting](RUNPOD_DEPLOYMENT_V2.md#troubleshooting)
+### **Minimum**
+- GPU: RTX 4090, Tesla V100 (12GB+ VRAM)
+- RAM: 16GB
+- Storage: 50GB+ for app + models
 
-## 🏗️ **Architektura**
+### **Recommended**
+- GPU: RTX 4090, A100 (24GB+ VRAM)
+- RAM: 32GB
+- Storage: 200GB+ (persistent disk for models)
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Next.js       │    │   FastAPI       │    │   GPU Processing│
-│   Frontend      │◄──►│   Backend       │◄──►│   Pipeline      │
-│   (Port 3000)   │    │   (Port 8000)   │    │   (CUDA)        │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         ▼                       ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Convex DB     │    │   Model Manager │    │   /data Storage │
-│   (Results)     │    │   (Load/Cache)  │    │   (Models)      │
-└─────────────────┘    └────────────���────┘    └─────────────────┘
-```
+## 🎯 API Endpoints
 
-## 🤝 **Contributing**
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check + GPU info |
+| `/api/models` | GET | List available models |
+| `/api/process` | POST | Start image processing |
+| `/api/status/{job_id}` | GET | Get job status |
+| `/api/rescan` | GET | Rescan model directories |
+| `/api/debug/paths` | GET | Debug model paths |
 
-1. Fork repository
-2. Vytvoř feature branch (`git checkout -b feature/nova-funkce`)
-3. Commit změny (`git commit -am 'Přidání nové funkce'`)
-4. Push branch (`git push origin feature/nova-funkce`)
-5. Vytvoř Pull Request
+## 🔗 URLs
 
-## 📄 **License**
+After deployment:
+- **Frontend**: `https://<RUNPOD_ID>-3000.proxy.runpod.net`
+- **Backend API**: `https://<RUNPOD_ID>-8000.proxy.runpod.net`
 
-MIT License - viz [LICENSE](LICENSE) soubor.
+## 📝 License
 
-## 🙏 **Acknowledgments**
-
-- [Diffusers](https://github.com/huggingface/diffusers) - Stable Diffusion pipeline
-- [Next.js](https://nextjs.org/) - React framework
-- [Tailwind CSS](https://tailwindcss.com/) - CSS framework
-- [RunPod](https://runpod.io/) - GPU cloud platform
-- [Convex](https://convex.dev/) - Backend-as-a-Service
+MIT License - see LICENSE file for details.
 
 ---
 
-**🚀 Ready for RunPod deployment! Nahrajte svoje modely a začněte generovat!**
+**Ready to deploy!** 🚀
