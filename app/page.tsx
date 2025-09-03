@@ -278,7 +278,6 @@ export default function Home() {
       const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
       const isLocalFallback = apiUrl === 'http://localhost:8000' && hostname && hostname !== 'localhost' && hostname !== '127.0.0.1'
 
-      console.log('🔍 Loading models from:', apiUrl)
       console.log('��� Current window.location:', typeof window !== 'undefined' ? window.location.href : 'SSR')
 
       // If backend isn't configured and we're not on localhost, avoid a doomed fetch
