@@ -425,7 +425,7 @@ export default function Home() {
           <div className="grid grid-cols-12 gap-6 min-h-[calc(100vh-140px)]">
             
             {/* Left Sidebar - Parameters & Presets */}
-            <div className="col-span-3 space-y-4 overflow-y-auto custom-scrollbar">
+            <div className="col-span-2 space-y-4 overflow-y-auto custom-scrollbar">
               <ErrorBoundary>
                 <ParameterControls
                   parameters={parameters}
@@ -461,7 +461,7 @@ export default function Home() {
             </div>
 
             {/* Center - Main Content */}
-            <div className="col-span-6 space-y-4">
+            <div className="col-span-8 space-y-4">
               
               {/* Processing Controls - moved above results */}
               <div className="flex space-x-4">
@@ -508,7 +508,7 @@ export default function Home() {
             </div>
 
             {/* Right Sidebar - Models only */}
-            <div className="col-span-3 space-y-4 overflow-y-auto custom-scrollbar">
+            <div className="col-span-2 space-y-4 overflow-y-auto custom-scrollbar">
               {/* Image Upload - moved to right sidebar */}
               <ErrorBoundary>
                 <ImageUpload
