@@ -17,6 +17,7 @@ const nextConfig = {
     "*.macaly.app",
     "*.macaly-app.com",
     "*.macaly-user-data.dev",
+    "*.fly.dev",
   ],
   // https://github.com/vercel/next.js/issues/79588#issuecomment-2972850452
   experimental: {
