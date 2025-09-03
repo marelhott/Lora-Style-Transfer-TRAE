@@ -285,6 +285,32 @@ export default function Home() {
         return
       }
 
+      // Special handling pro fly.dev - backend může běžet na jiné cestě
+      if (hostname.includes('.fly.dev')) {
+        // Zkus různé varianty URL pro fly.dev
+        const variants = [
+          `${window.location.protocol}//${hostname}/api/models`,
+          `${window.location.protocol}//${hostname}:8000/api/models`,
+          `${apiUrl}/api/models`
+        ]
+
+        for (const testUrl of variants) {
+          try {
+            const testResponse = await fetch(testUrl, {
+              method: 'HEAD',
+              signal: AbortSignal.timeout(3000)
+            })
+            if (testResponse.ok || testResponse.status === 405) { // 405 Method Not Allowed je OK pro HEAD
+              apiUrl = testUrl.replace('/api/models', '')
+              break
+            }
+          } catch (e) {
+            // Pokračuj na další variantu
+            continue
+          }
+        }
+      }
+
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 10000)
 
