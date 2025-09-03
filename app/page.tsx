@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -268,17 +267,26 @@ export default function Home() {
   // Load models from API
   const loadModels = async () => {
     try {
-      // Použij aktuální API_BASE_URL (který už obsahuje správnou logiku)
       const apiUrl = getApiBaseUrl()
+      const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
+      const isLocalFallback = apiUrl === 'http://localhost:8000' && hostname && hostname !== 'localhost' && hostname !== '127.0.0.1'
+
       console.log('🔍 Loading models from:', apiUrl)
       console.log('🌐 Current window.location:', typeof window !== 'undefined' ? window.location.href : 'SSR')
-      
+
+      // If backend isn't configured and we're not on localhost, avoid a doomed fetch
+      if (isLocalFallback) {
+        console.warn('⚠️ Backend not configured. Skipping model fetch to avoid timeouts.')
+        setModels([])
+        return
+      }
+
       const controller = new AbortController()
       const timeoutId = setTimeout(() => {
         console.error('⏰ Fetch timeout after 10s')
         controller.abort()
       }, 10000)
-      
+
       const response = await fetch(`${apiUrl}/api/models`, {
         method: 'GET',
         headers: {
@@ -287,12 +295,12 @@ export default function Home() {
         },
         signal: controller.signal
       })
-      
+
       clearTimeout(timeoutId)
-      
+
       console.log('📡 Response status:', response.status)
       console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()))
-      
+
       if (response.ok) {
         const modelsData = await response.json()
         console.log('✅ Loaded models:', modelsData.length)
@@ -300,16 +308,16 @@ export default function Home() {
       } else {
         const errorText = await response.text()
         console.error('❌ Failed to load models: HTTP', response.status, errorText)
-        setModels([]) // Vyčisti modely při chybě
+        setModels([])
       }
     } catch (error) {
       console.error('💥 Failed to load models:', error)
       console.error('💥 Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
+        name: (error as any).name,
+        message: (error as any).message,
+        stack: (error as any).stack
       })
-      setModels([]) // Vyčisti modely při chybě
+      setModels([])
     }
   }
 
