@@ -118,6 +118,16 @@ class ModelManager:
     def get_available_models(self) -> List[Dict]:
         """Vrátí seznam dostupných modelů"""
         return list(self.model_metadata.values())
+
+    def get_models(self) -> List[Dict]:
+        """Alias pro get_available_models - kompatibilita s main.py"""
+        return self.get_available_models()
+
+    def scan_models(self):
+        """Veřejná metoda pro rescan modelů"""
+        self.model_metadata.clear()
+        self._scan_models()
+        logger.info(f"Rescanned models: {len(self.model_metadata)} found")
     
     def get_model_info(self, model_id: str) -> Optional[Dict]:
         """Vrátí informace o konkrétním modelu"""
