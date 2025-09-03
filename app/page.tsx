@@ -422,7 +422,7 @@ export default function Home() {
       {/* Main Layout */}
       <ErrorBoundary>
         <div className="w-full px-0 py-6">
-          <div className="grid grid-cols-12 gap-6 min-h-[calc(100vh-140px)] w-full">
+          <div className="grid grid-cols-12 gap-4 min-h-[calc(100vh-140px)] w-full">
             
             {/* Left Sidebar - Parameters & Presets */}
             <div className="col-span-3 space-y-4 overflow-y-auto custom-scrollbar pl-4">
