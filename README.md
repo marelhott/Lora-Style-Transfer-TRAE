@@ -1,105 +1,193 @@
 # 🎨 LoRA Style Transfer
 
-**AI-powered LoRA style transfer application s pokročilým file managementem a RunPod optimalizací.**
+**AI-powered style transfer aplikace s LoRA modely, Next.js frontend a Python backend optimalizovaná pro RunPod.**
 
-## 🚀 Přehled
+![LoRA Style Transfer](https://img.shields.io/badge/AI-Style%20Transfer-blue) ![RunPod](https://img.shields.io/badge/Platform-RunPod-green) ![Next.js](https://img.shields.io/badge/Frontend-Next.js-black) ![Python](https://img.shields.io/badge/Backend-Python-yellow)
 
-Pokročilá fullstack aplikace pro AI style transfer pomocí LoRA modelů a Stable Diffusion. Optimalizována pro deployment na RunPod s GPU podporou a integrovaným file browserem pro persistent storage.
+## ✨ **Funkce**
 
-### ✨ Klíčové funkce
+- 🎨 **AI Style Transfer** pomocí Stable Diffusion + LoRA modelů
+- 🖼️ **Real-time preview** s progress tracking
+- 📱 **Responzivní UI** postavené na Next.js a Tailwind CSS
+- 🔥 **GPU optimalizace** pro rychlé generování
+- 💾 **Persistentní storage** pro modely a výsledky
+- 🚀 **RunPod ready** - jednoduchý deployment
 
-- 🎯 **AI Style Transfer** - Stable Diffusion + LoRA modely
-- 📁 **File Browser** - procházení /data/models a /data/loras
-- 🔧 **Backend Settings** - connection management s auto-detekcí
-- 📤 **Model Upload** - drag & drop s progress tracking
-- ⚙️ **Parameter Controls** - pokročilé nastavení AI processing
-- 📊 **Progress Tracking** - real-time status updates
-- 🖼️ **Results Gallery** - preview a download výsledků
-- 🐳 **Docker Ready** - optimalizováno pro RunPod deployment
+## 🚀 **Quick Start pro RunPod**
 
-## 🏗️ Architektura
+### **Způsob 1: Standalone (DOPORUČENO)**
+```bash
+# V RunPod terminálu
+git clone https://github.com/marelhott/Lora-Style-Transfer.git
+cd Lora-Style-Transfer
+chmod +x start-runpod.sh
+./start-runpod.sh install  # Jednou
+./start-runpod.sh auto     # Spuštění
+```
 
-### **Frontend (Next.js 14)**
-- React 18 s TypeScript
-- Tailwind CSS + shadcn/ui komponenty
-- Responsive design
-- Real-time progress tracking
+### **Způsob 2: Docker Template**
+```bash
+# RunPod template image
+mulenmara1505/lora-style-transfer:latest
 
-### **Backend (FastAPI)**
-- Python 3.10 + FastAPI
-- PyTorch 2.1.0 + CUDA 12.1
-- Diffusers + Transformers
-- Memory optimization pro GPU
+# Volume mapping
+/data -> /data  # KRITICKÉ pro modely!
 
-### **Deployment**
-- Docker multi-stage build
-- RunPod optimalizace
-- Persistent storage support
-- Health monitoring
+# Porty
+3000 (frontend), 8000 (backend)
+```
 
-## Klíčové vlastnosti (What it does)
-- Frontend-only demo s mock daty a vizuálně bohatým UI pro stylové transfery
-- Připravená architektura pro backend integraci Cursor a Convex schéma
-- Kompletní Convex databázové schéma (modely, presets, results, processing_jobs, system_info)
-- Připravené komponenty pro upload modelů, zpracování obrázků a správu presetů
-- Komunikace v češtině
-- Optimalizovaná velikost projektu: 7.4 MB (bez node_modules, bez cache)
-- Neobsahuje skutečné AI modely — slouží jako struktura pro budoucí integraci
-- Jasně připraveno pro push na GitHub aCursor development
+### **Způsob 3: Manual Setup**
+```bash
+# Backend
+python runpod_backend.py
 
-## Proč (Why)
-- Poskytuje rychlý, vizuálně bohatý frontend pro experimenty s neural-style transferem a pro snadnou budoucí výměnu mock dat za skutečnou AI logiku a backend
-- Umožňuje iteraci UX a datových modelů nezávisle na backendu, aby Cursor vývojáři přesně věděli, co implementovat
+# Frontend (jiný terminál)  
+npm run build && npm start
+```
 
-## Stav projektu (Current State)
-- Frontend-only demo s mock daty
-- Backend API a Convex data lze integrovat pro rozšíření funkčnosti
-- Struktura připravená pro backendovou logiku a GPU-backed zpracování
+## 📁 **Struktura modelů**
 
-## Architektura (High-Level)
-- Frontend komponenty: ImageUpload, ParameterControls, ModelManager, ResultsGallery, PresetManager, ProgressTracker, ErrorBoundary, a další
-- Convex surface pro data (presets, models, results, processing history) s jasně definovanými mutacemi/queries
-- Klientská logika pro správu modelů, parametrů, výsledků a průběhu zpracování
-- Připravené Convex schéma a workflow pro budoucí propojení s backendem
+Vaše modely musí být v persistentním disku:
 
-## Convex databázové schéma (Conceptual)
-- models: id, name, type (lora|full), fileSize, uploadedAt, isActive, metadata
-- presets: id, userId (optional), name, parameters, isFavorite, createdAt, updatedAt
-- results: id, imageUrl, seed, parameters, modelName, loraName, isFavorite, userId, createdAt
-- processingJobs: id, userId, inputImageId, modelId, parameters, status, progress, currentStep, totalSteps, startedAt, completedAt, errorMessage, resultImageIds
-- systemInfo: id, userId, hardwareInfo, lastUpdated
+```
+/data/
+├── models/              # Stable Diffusion modely
+│   ├── sd-v1-5.safetensors
+│   ├── realistic-vision.safetensors
+│   └── dreamshaper.ckpt
+└── loras/               # LoRA modely
+    ├── portrait.safetensors
+    ├── anime-style.pt
+    └── landscape.safetensors
+```
 
-Poznámka: Tento Convex model slouží jako vytyčený rámec pro budoucí implementaci a může být upraven podle konečné backend architektury.
+## 🎮 **Hardware požadavky**
 
-## Cursor a budoucí integrace (Cursor integration)
-- Backend endpoints (předpokládané): /process, /status/{job_id}, /models, /health, /models/upload, /models/delete
-- Mapování Convex schématu na backend data modely a zajištění konzistence ID
-- Real-time aktualizace průběhu zpracování, progress bar a ETA
-- End-to-end testy pro model upload, preset management, processing a výsledky
+### **Minimální:**
+- **GPU:** RTX 4090, Tesla V100 (12GB+ VRAM)
+- **RAM:** 16GB
+- **Storage:** 50GB+ pro aplikaci + modely
 
-## Odkazy (Docs)
-- CURSOR_DEVELOPMENT_GUIDE.md
-- PROJECT_AUDIT.md
+### **Doporučené:**
+- **GPU:** RTX 4090, A100 (24GB+ VRAM)  
+- **RAM:** 32GB
+- **Storage:** 200GB+ persistentní disk
 
-## Deployment a GitHub (Deployment & versioning)
-- Projekt je připraven pro push na GitHub
-- Struktura je front-end s mock daty, připravená pro Cursor development a Convex data layer
+## 🛠️ **Development**
 
-## Setup a vývoj (Development Setup)
-- Vytvořte lokální prostředí pro frontend development (inicializujte projekt dle vašich standardů)
-- Ujistěte se, že Convex surface (nebo ekvivalentní datová vrstva) je připravena pro vývoj
-- Připravte mock data pro modely, presets a results tak, aby UI zobrazovalo strukturu bez scénářů reality
-- Spusťte frontend v vývojovém režimu a ověřte protékající UI flow (nahrávání obrázků, volba modelů, úprava parametrů, ukládání presetů, zobrazení výsledků)
-- Připravte environmentální proměnné pro backend URL a koncové body, aby bylo možné připravit Cursor integration
+### **Local Setup**
+```bash
+# Clone repository
+git clone https://github.com/marelhott/Lora-Style-Transfer.git
+cd Lora-Style-Transfer
 
-Note: Tento README je záměrně stručný a soustředí se na “co” a “proč” projektu, nikoliv na implementační detaily.
+# Backend setup
+cd backend
+pip install -r requirements.txt
+python main.py
 
-## Quick Start (V kostce)
-- Otevřete aplikaci v připraveném vývojovém prostředí
-- Nahrajte obrázek pomocí Upload
-- Vyberte model (LoRA či plný) z katalogu
-- Upravte parametry stylového transferu a uložte preset, pokud chcete
-- Spusťte zpracování (mock)
-- Prohlédněte a stáhněte výsledky, spravujte modely a presety podle potřeby
+# Frontend setup (nový terminál)
+npm install
+npm run dev
+```
 
-Pokud byste chtěli variantu pro konkrétní task nebo jedno-stránkový AI-oriented brief, připravím ji na míru.
+### **Environment Variables**
+```bash
+# Optional - automatická detekce je preferovaná
+NEXT_PUBLIC_API_URL=http://localhost:8000
+DATA_PATH=/data
+PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+```
+
+## 📚 **Deployment módy**
+
+| Mód | Popis | Vhodné pro |
+|-----|-------|------------|
+| **Standalone** | Jeden Python script | RunPod, jednoduchost |
+| **Docker** | Kontejner s oběma | Produkce, izolace |
+| **Hybrid** | Backend + frontend samostatně | Development, flexibilita |
+| **Manual** | Ruční setup | Customizace, debugging |
+
+## 🔧 **Troubleshooting**
+
+### **Nejčastější problémy:**
+
+**"Persistentní disk nenalezen"**
+```bash
+# Zkontrolujte mount v RunPod template:
+volumeMounts:
+  - mountPath: "/data"
+```
+
+**"Žádné modely nenalezeny"**
+```bash
+# Nahrajte modely do správných složek
+ls -la /data/models/     # .safetensors, .ckpt
+ls -la /data/loras/      # .safetensors, .pt
+```
+
+**"Backend se nespustí"**
+```bash
+# Test závislostí
+./start-runpod.sh install
+python -c "import torch, diffusers; print('OK')"
+```
+
+### **Debug příkazy:**
+```bash
+# Kompletní diagnostika
+./start-runpod.sh help
+
+# Test systému
+curl http://localhost:8000/api/health
+
+# GPU status
+nvidia-smi
+```
+
+## 📖 **Dokumentace**
+
+- 📋 [RunPod Deployment Guide v2.0](RUNPOD_DEPLOYMENT_V2.md)
+- 🐳 [Docker Deployment](DOCKER_DEPLOYMENT.md)
+- 🔧 [Development Setup](DEVELOPMENT_STATUS.md)
+
+## 🏗️ **Architektura**
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Next.js       │    │   FastAPI       │    │   GPU Processing│
+│   Frontend      │◄──►│   Backend       │◄──►│   Pipeline      │
+│   (Port 3000)   │    │   (Port 8000)   │    │   (CUDA)        │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─��───────────────┐
+│   Convex DB     │    │   Model Manager │    │   /data Storage │
+│   (Results)     │    │   (Load/Cache)  │    │   (Models)      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+## 🤝 **Contributing**
+
+1. Fork repository
+2. Vytvoř feature branch (`git checkout -b feature/nova-funkce`)
+3. Commit změny (`git commit -am 'Přidání nové funkce'`)
+4. Push branch (`git push origin feature/nova-funkce`)
+5. Vytvoř Pull Request
+
+## 📄 **License**
+
+MIT License - viz [LICENSE](LICENSE) soubor.
+
+## 🙏 **Acknowledgments**
+
+- [Diffusers](https://github.com/huggingface/diffusers) - Stable Diffusion pipeline
+- [Next.js](https://nextjs.org/) - React framework
+- [Tailwind CSS](https://tailwindcss.com/) - CSS framework
+- [RunPod](https://runpod.io/) - GPU cloud platform
+- [Convex](https://convex.dev/) - Backend-as-a-Service
+
+---
+
+**🚀 Ready for RunPod deployment! Nahrajte svoje modely a začněte generovat!**
