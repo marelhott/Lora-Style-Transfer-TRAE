@@ -13,7 +13,12 @@
 - 💾 **Persistentní storage** pro modely a výsledky
 - 🚀 **RunPod ready** - jednoduchý deployment
 
-## 🚀 **Quick Start pro RunPod**
+## 🚀 **Quick Start**
+
+### **Pro vývojáře v Cursor IDE**
+📖 **[CURSOR_SETUP.md](CURSOR_SETUP.md)** - kompletní 1-minute setup guide
+
+### **Pro RunPod deployment**
 
 ### **Způsob 1: Standalone (DOPORUČENO)**
 ```bash
@@ -148,9 +153,9 @@ nvidia-smi
 
 ## 📖 **Dokumentace**
 
-- 📋 [RunPod Deployment Guide v2.0](RUNPOD_DEPLOYMENT_V2.md)
-- 🐳 [Docker Deployment](DOCKER_DEPLOYMENT.md)
-- 🔧 [Development Setup](DEVELOPMENT_STATUS.md)
+- 💻 [Cursor IDE Setup](CURSOR_SETUP.md) - rychlý start pro vývojáře
+- 📋 [RunPod Deployment v2.0](RUNPOD_DEPLOYMENT_V2.md) - produkční nasazení
+- 🎮 [Hardware Requirements & Troubleshooting](RUNPOD_DEPLOYMENT_V2.md#troubleshooting)
 
 ## 🏗️ **Architektura**
 
@@ -162,10 +167,10 @@ nvidia-smi
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          ▼                       ▼                       ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─��───────────────┐
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Convex DB     │    │   Model Manager │    │   /data Storage │
 │   (Results)     │    │   (Load/Cache)  │    │   (Models)      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+└─────────────────┘    └────────────���────┘    └─────────────────┘
 ```
 
 ## 🤝 **Contributing**
