@@ -461,7 +461,7 @@ export default function Home() {
             </div>
 
             {/* Center - Main Content */}
-            <div className="col-span-6 space-y-4">
+            <div className="col-span-7 space-y-4">
               
               {/* Processing Controls - moved above results */}
               <div className="flex space-x-4">
@@ -472,7 +472,7 @@ export default function Home() {
                   onClick={handleStartProcessing}
                 >
                   <Play className="w-4 h-4 mr-2" />
-                  {isProcessing ? "Zpracovávání..." : `Generovat ${parameters.batchCount} ${parameters.batchCount === 1 ? 'obrázek' : parameters.batchCount < 5 ? 'obrázky' : 'obrázk��'}`}
+                  {isProcessing ? "Zpracovávání..." : `Generovat ${parameters.batchCount} ${parameters.batchCount === 1 ? 'obrázek' : parameters.batchCount < 5 ? 'obrázky' : 'obrázků'}`}
                 </Button>
                 <Button variant="outline" size="lg" disabled={convertedResults.length === 0} onClick={handleDownloadAll}>
                   <Download className="w-4 h-4 mr-2" />
