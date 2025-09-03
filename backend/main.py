@@ -137,7 +137,47 @@ async def get_models():
         models = model_manager.get_available_models()
         return models
     except Exception as e:
+        logger.error(f"Error in get_models: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to scan models: {str(e)}")
+
+@app.get("/api/debug/paths")
+async def debug_paths():
+    """Debug endpoint pro kontrolu cest a dostupnosti modelů"""
+    try:
+        import os
+        debug_info = {
+            "models_path": str(model_manager.models_path),
+            "loras_path": str(model_manager.loras_path),
+            "models_path_exists": model_manager.models_path.exists(),
+            "loras_path_exists": model_manager.loras_path.exists(),
+            "temp_path": str(TEMP_PATH),
+            "temp_path_exists": TEMP_PATH.exists(),
+            "current_working_dir": os.getcwd(),
+            "model_metadata_count": len(model_manager.model_metadata),
+            "available_models": len(model_manager.get_available_models())
+        }
+
+        # Zkus vylistovat obsah adresářů
+        if model_manager.models_path.exists():
+            try:
+                models_files = list(model_manager.models_path.rglob("*.safetensors")) + list(model_manager.models_path.rglob("*.ckpt"))
+                debug_info["models_files_found"] = [str(f) for f in models_files[:5]]  # max 5 pro přehlednost
+                debug_info["models_files_count"] = len(models_files)
+            except Exception as e:
+                debug_info["models_scan_error"] = str(e)
+
+        if model_manager.loras_path.exists():
+            try:
+                loras_files = list(model_manager.loras_path.rglob("*.safetensors"))
+                debug_info["loras_files_found"] = [str(f) for f in loras_files[:5]]  # max 5 pro přehlednost
+                debug_info["loras_files_count"] = len(loras_files)
+            except Exception as e:
+                debug_info["loras_scan_error"] = str(e)
+
+        return debug_info
+    except Exception as e:
+        logger.error(f"Error in debug_paths: {e}")
+        raise HTTPException(status_code=500, detail=f"Debug failed: {str(e)}")
 
 @app.get("/api/browse-directory")
 async def browse_directory(path: str = "/data"):
