@@ -283,7 +283,6 @@ export default function Home() {
 
       // If backend isn't configured and we're not on localhost, avoid a doomed fetch
       if (isLocalFallback) {
-        console.warn('⚠️ Backend not configured. Skipping model fetch to avoid timeouts.')
         setModels([])
         return
       }
