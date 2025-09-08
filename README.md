@@ -1,5 +1,7 @@
 # 🎨 LoRA Style Transfer - Clean Version
 
+[![Build and Push Docker Image](https://github.com/marelhott/Lora-Style-Transfer/actions/workflows/docker-build.yml/badge.svg)](https://github.com/marelhott/Lora-Style-Transfer/actions/workflows/docker-build.yml)
+
 **AI-powered LoRA style transfer application** built with Next.js, FastAPI, and Convex. Optimized for RunPod deployment with persistent disk support.
 
 ## 🚀 Quick Start - RunPod Deployment
