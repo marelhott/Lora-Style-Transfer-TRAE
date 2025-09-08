@@ -83,7 +83,7 @@ RUN chmod +x /app/backend/main.py
 
 # Instalace frontend závislostí a build
 WORKDIR /app
-RUN npm ci --only=production
+RUN npm install --verbose || (npm cache clean --force && npm install --verbose)
 RUN npm run build
 
 # Zpět do backend adresáře
