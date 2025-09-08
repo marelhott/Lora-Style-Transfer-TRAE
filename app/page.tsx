@@ -1,5 +1,7 @@
 "use client"
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -26,7 +28,7 @@ import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 
 // API endpoint for RunPod backend
-// Automatická detekce API URL pro různé prostředí
+// Zjednodušená detekce API URL
 const getApiBaseUrl = () => {
   // 1. Environment variable (nejvyšší priorita)
   if (process.env.NEXT_PUBLIC_API_URL) {
@@ -45,24 +47,17 @@ const getApiBaseUrl = () => {
       }
     }
 
-    // 3. Fly.dev auto-detection - porty se mapují automaticky
-    if (hostname.includes('.fly.dev')) {
-      // Pro fly.dev prostředí vracíme současný hostname bez portu
-      // Backend běží na stejné doméně, ale jiné cestě
-      return `https://${hostname}`
-    }
-
-    // 4. Localhost detection
+    // 3. Localhost detection
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:8000'
     }
 
-    // 5. Generic same-host fallback
+    // 4. Generic same-host fallback
     const protocol = window.location.protocol
     return `${protocol}//${hostname}:8000`
   }
 
-  // 6. Server-side fallback
+  // 5. Server-side fallback
   return 'http://localhost:8000'
 }
 
@@ -310,89 +305,86 @@ export default function Home() {
     }
   }
 
+  // Robustní scan disku
+  const scanDisk = async () => {
+    try {
+      const apiUrl = getApiBaseUrl()
+      console.log("🔍 Scanning disk at:", apiUrl)
+      
+      const response = await fetch(`${apiUrl}/api/scan-disk`, { 
+        method: 'POST',
+        cache: 'no-store' 
+      })
+      
+      if (response.ok) {
+        const scanResult = await response.json()
+        console.log("🔍 Disk Scan Result:", scanResult)
+        
+        if (scanResult.status === 'success') {
+          const { manual_scan, managed_scan } = scanResult
+          console.log(`📊 Found ${manual_scan.models_count} models, ${manual_scan.loras_count} LoRAs`)
+          console.log("📁 Models path:", manual_scan.models_path)
+          console.log("📁 LoRAs path:", manual_scan.loras_path)
+          
+          // Reload modely pokud byly nalezeny
+          if (manual_scan.models_count > 0 || manual_scan.loras_count > 0) {
+            console.log("✅ Modely nalezeny, reloaduji...")
+            setTimeout(() => loadModels(), 1000)
+          }
+        } else {
+          console.error("❌ Scan failed:", scanResult.error)
+        }
+      } else {
+        console.error("❌ Scan request failed:", response.status)
+      }
+    } catch (error) {
+      console.error("❌ Disk scan failed:", error)
+    }
+  }
+
   // Load models from API
   const loadModels = async () => {
     try {
-      let apiUrl = getApiBaseUrl()
-      const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
-      const isLocalFallback = apiUrl === 'http://localhost:8000' && hostname && hostname !== 'localhost' && hostname !== '127.0.0.1'
-
-      // Pokud běžíme mimo localhost a URL spadla na lokální, nezkoušej fetch
-      if (isLocalFallback) {
-        setModels([])
-        return
-      }
-
-      // Fly.dev: vyzkoušej více variant cesty
-      if (hostname.includes('.fly.dev')) {
-        const variants = [
-          `${window.location.protocol}//${hostname}/api/models`,
-          `${window.location.protocol}//${hostname}:8000/api/models`,
-          `${apiUrl}/api/models`
-        ]
-
-        for (const testUrl of variants) {
-          try {
-            const testController = new AbortController()
-            const testTimeoutId = setTimeout(() => testController.abort(), 3000)
-
-            const testResponse = await fetch(testUrl, {
-              method: 'HEAD',
-              cache: 'no-store',
-              signal: testController.signal
-            })
-
-            clearTimeout(testTimeoutId)
-
-            if (testResponse.ok || testResponse.status === 405) {
-              apiUrl = testUrl.replace('/api/models', '')
-              break
-            }
-          } catch {
-            continue
+      // Zjednodušená detekce API URL
+      let apiUrl = 'http://localhost:8000'
+      
+      if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname
+        
+        // RunPod proxy detection
+        if (hostname.includes('proxy.runpod.net')) {
+          const match = hostname.match(/^([^-]+)(?:-(\d+))?\.proxy\.runpod\.net$/)
+          if (match) {
+            const [, baseId] = match
+            apiUrl = `https://${baseId}-8000.proxy.runpod.net`
           }
         }
       }
 
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000)
+      console.log('🔍 Loading models from:', apiUrl)
 
       const res = await fetch(`${apiUrl}/api/models`, {
         method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        cache: 'no-store',
-        signal: controller.signal
+        headers: { 
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        cache: 'no-store'
       })
 
-      clearTimeout(timeoutId)
+      console.log('📡 Response status:', res.status)
 
       if (res.ok) {
-        try {
-          const modelsData = await res.json()
-          setModels(Array.isArray(modelsData) ? modelsData : [])
-        } catch (e) {
-          console.error('Failed to parse models JSON:', e)
-          setModels([])
-        }
+        const modelsData = await res.json()
+        console.log('✅ Models loaded:', modelsData.length)
+        setModels(Array.isArray(modelsData) ? modelsData : [])
       } else {
-        try {
-          const errorText = await res.text()
-          console.error('Failed to load models: HTTP', res.status, errorText?.slice(0, 200))
-        } catch {
-          console.error('Failed to load models: HTTP', res.status)
-        }
+        console.error('❌ Failed to load models: HTTP', res.status)
         setModels([])
       }
     } catch (error) {
-      console.error('Failed to load models:', error)
+      console.error('❌ Failed to load models:', error)
       setModels([])
-
-      if (typeof window !== 'undefined' && window.location.hostname.includes('.fly.dev')) {
-        console.warn('Backend API nedostupné na fly.dev. Ujistěte se, že backend běží na stejné doméně.')
-      }
-
-      // Spustit debug diagnostiku při problémech
-      setTimeout(() => debugBackend(), 2000)
     }
   }
 
@@ -531,6 +523,7 @@ export default function Home() {
                     // Model deletion není implementován kvůli bezpečnosti
                     // Modely se mazají přímo v /data/models/ přes RunPod interface
                   }}
+                  onScanDisk={scanDisk}
                 />
               </ErrorBoundary>
             </div>

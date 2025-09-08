@@ -311,7 +311,79 @@ async def root():
 @app.get("/api/test")
 async def test_endpoint():
     """Simple test endpoint"""
-    return {"message": "Backend is working!", "models_path": MODELS_PATH, "loras_path": LORAS_PATH}
+    return {"message": "Backend is working!", "models_path": str(MODELS_PATH), "loras_path": str(LORAS_PATH)}
+
+@app.post("/api/scan-disk")
+async def scan_disk():
+    """Robustní scan persist disku pro modely"""
+    try:
+        # Vytvoř adresáře pokud neexistují
+        MODELS_PATH.mkdir(parents=True, exist_ok=True)
+        LORAS_PATH.mkdir(parents=True, exist_ok=True)
+        
+        # Manuální scan souborů
+        models_found = []
+        loras_found = []
+        
+        # Scan full models
+        for ext in ["*.safetensors", "*.ckpt", "*.pt", "*.pth"]:
+            for model_file in MODELS_PATH.rglob(ext):
+                if model_file.is_file():
+                    models_found.append({
+                        "name": model_file.stem,
+                        "path": str(model_file),
+                        "size": model_file.stat().st_size,
+                        "type": "full"
+                    })
+        
+        # Scan LoRA models
+        for ext in ["*.safetensors", "*.pt"]:
+            for lora_file in LORAS_PATH.rglob(ext):
+                if lora_file.is_file():
+                    loras_found.append({
+                        "name": lora_file.stem,
+                        "path": str(lora_file),
+                        "size": lora_file.stat().st_size,
+                        "type": "lora"
+                    })
+        
+        # Pokud máme model_manager, použij ho
+        if model_manager:
+            try:
+                model_manager.scan_models()
+                managed_models = model_manager.get_available_models()
+            except Exception as e:
+                logger.error(f"ModelManager scan failed: {e}")
+                managed_models = []
+        else:
+            managed_models = []
+        
+        return {
+            "status": "success",
+            "manual_scan": {
+                "models_path": str(MODELS_PATH),
+                "loras_path": str(LORAS_PATH),
+                "models_exists": MODELS_PATH.exists(),
+                "loras_exists": LORAS_PATH.exists(),
+                "models_count": len(models_found),
+                "loras_count": len(loras_found),
+                "models": models_found,
+                "loras": loras_found
+            },
+            "managed_scan": {
+                "available": model_manager is not None,
+                "models": managed_models
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Disk scan failed: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "models_path": str(MODELS_PATH),
+            "loras_path": str(LORAS_PATH)
+        }
 
 @app.get("/api/health")
 async def health_check():
@@ -517,8 +589,14 @@ def initialize_services():
     
     logger.info("Services initialized successfully")
 
-# Inicializace při startu
-initialize_services()
+# Inicializace při startu - s error handlingem
+try:
+    initialize_services()
+except Exception as e:
+    logger.error(f"FATAL: Could not initialize services: {e}")
+    logger.error("Backend will run in fallback mode")
+    model_manager = None
+    ai_processor = None
 
 if __name__ == "__main__":
     import uvicorn

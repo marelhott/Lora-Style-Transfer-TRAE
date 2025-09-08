@@ -43,6 +43,7 @@ interface ModelManagerProps {
   onModelSelect: (modelId: string) => void
   onModelUpload: () => void
   onModelDelete: (modelId: string) => void
+  onScanDisk?: () => void
   className?: string
 }
 
@@ -58,13 +59,14 @@ function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString()
 }
 
-export function ModelManager({
-  models,
-  selectedModelId,
-  onModelSelect,
-  onModelUpload,
+export function ModelManager({ 
+  models, 
+  selectedModelId, 
+  onModelSelect, 
+  onModelUpload, 
   onModelDelete,
-  className
+  onScanDisk,
+  className 
 }: ModelManagerProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(["lora", "full"])
@@ -99,10 +101,18 @@ export function ModelManager({
             <Cpu className="w-4 h-4 mr-2" />
             AI Modely
           </h3>
-          <Button size="sm" variant="outline" onClick={handleModelUpload}>
-            <Plus className="w-4 h-4 mr-1" />
-            Nahrát
-          </Button>
+          <div className="flex gap-2">
+            {onScanDisk && (
+              <Button size="sm" variant="outline" onClick={onScanDisk}>
+                <HardDrive className="w-4 h-4 mr-1" />
+                Scan Disk
+              </Button>
+            )}
+            <Button size="sm" variant="outline" onClick={handleModelUpload}>
+              <Plus className="w-4 h-4 mr-1" />
+              Nahrát
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-4">
