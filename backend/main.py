@@ -48,9 +48,9 @@ loaded_loras: Dict[str, Any] = {}
 model_manager = None
 ai_processor = None
 
-# RunPod persistent storage paths
-MODELS_PATH = Path("/data/models")
-LORAS_PATH = Path("/data/loras")
+# RunPod persistent storage paths (allow override via env)
+MODELS_PATH = Path(os.environ.get("MODELS_PATH", "/data/models"))
+LORAS_PATH = Path(os.environ.get("LORAS_PATH", "/data/loras"))
 TEMP_PATH = Path("/tmp/processing")
 
 # Ensure directories exist
@@ -59,10 +59,10 @@ TEMP_PATH.mkdir(parents=True, exist_ok=True)
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=["*"],  # Povolit všechny origins pro debugging
+    allow_credentials=False,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
 # Pydantic models
@@ -131,10 +131,19 @@ async def root():
     return {"message": "LoRA Style Transfer API", "status": "running", "gpu_info": get_gpu_info()}
 
 @app.get("/api/models")
-async def get_models():
-    """Vrátí seznam dostupných modelů"""
+async def get_models(debug: int = 0):
+    """Vrátí seznam dostupných modelů. Při debug=1 vrací i cesty a počty."""
     try:
         models = model_manager.get_available_models()
+        if debug:
+            return {
+                "models": models,
+                "models_path": str(model_manager.models_path),
+                "loras_path": str(model_manager.loras_path),
+                "models_path_exists": model_manager.models_path.exists(),
+                "loras_path_exists": model_manager.loras_path.exists(),
+                "models_found": len(models)
+            }
         return models
     except Exception as e:
         logger.error(f"Error in get_models: {e}")
@@ -294,6 +303,16 @@ async def rescan_default_paths():
         logger.error(f"Error in rescan: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/")
+async def root():
+    """Root endpoint - simple test"""
+    return {"message": "LoRA Style Transfer Backend is running!", "status": "ok"}
+
+@app.get("/api/test")
+async def test_endpoint():
+    """Simple test endpoint"""
+    return {"message": "Backend is working!", "models_path": MODELS_PATH, "loras_path": LORAS_PATH}
+
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
@@ -369,6 +388,50 @@ async def get_job_status(job_id: str):
     
     return processing_jobs[job_id]
 
+@app.post("/api/upload-model")
+async def upload_model(
+    file: UploadFile = File(...),
+    model_type: str = Form("full")  # "full" nebo "lora"
+):
+    """Nahraje model na RunPod persistentní disk"""
+    try:
+        # Kontrola typu souboru
+        if not file.filename.lower().endswith(('.safetensors', '.ckpt', '.pt', '.pth')):
+            raise HTTPException(status_code=400, detail="Invalid file type. Only .safetensors, .ckpt, .pt, .pth files are allowed")
+        
+        # Urči cílový adresář podle typu
+        if model_type == "lora":
+            target_dir = LORAS_PATH
+        else:
+            target_dir = MODELS_PATH
+        
+        # Vytvoř adresář pokud neexistuje
+        target_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Ulož soubor na RunPod disk
+        file_path = target_dir / file.filename
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Rescan modely
+        model_manager.scan_models()
+        
+        return {
+            "success": True,
+            "filename": file.filename,
+            "model_type": model_type,
+            "file_path": str(file_path),
+            "file_size": len(content),
+            "message": f"Model {file.filename} uploaded successfully to {target_dir}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading model: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
 # Background processing function
 async def process_image(job_id: str):
     """Zpracuje obrázek na pozadí pomocí AI pipeline"""
@@ -429,8 +492,29 @@ async def process_image(job_id: str):
 def initialize_services():
     """Inicializace služeb po startu aplikace"""
     global model_manager, ai_processor
-    model_manager = ModelManager()
+    
+    # Vytvoř adresáře pokud neexistují
+    MODELS_PATH.mkdir(parents=True, exist_ok=True)
+    LORAS_PATH.mkdir(parents=True, exist_ok=True)
+    
+    # Inicializuj s cestami (z env)
+    model_manager = ModelManager(models_path=str(MODELS_PATH), loras_path=str(LORAS_PATH))
     ai_processor = AIProcessor()
+    
+    # Automaticky naskenuj modely při startu
+    logger.info("Scanning models on startup...")
+    try:
+        model_manager.scan_models()
+        logger.info(f"Startup scan: models_path={model_manager.models_path} exists={model_manager.models_path.exists()} | loras_path={model_manager.loras_path} exists={model_manager.loras_path.exists()}")
+    except Exception as e:
+        logger.error(f"Initial scan failed: {e}")
+    
+    # Zobraz info o nalezených modelech
+    models = model_manager.get_available_models()
+    logger.info(f"Found {len(models)} models on startup")
+    for model in models:
+        logger.info(f"  - {model['name']} ({model['type']})")
+    
     logger.info("Services initialized successfully")
 
 # Inicializace při startu
