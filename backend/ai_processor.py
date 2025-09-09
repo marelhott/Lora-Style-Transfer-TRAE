@@ -160,15 +160,23 @@ class AIProcessor:
         else:
             logger.warning(f"Unknown sampler: {sampler}, using default")
     
-    async def process_image(self, image_data: bytes, model_id: str, parameters: Dict) -> Dict:
+    async def process_image(self, image_data: bytes, model_id: str, parameters: Dict, progress_callback=None) -> Dict:
         """Zpracuje obrázek s daným modelem a parametry pomocí Stable Diffusion"""
+        def update_progress(step: str, progress: int):
+            """Helper funkce pro update progress"""
+            if progress_callback:
+                progress_callback(step, progress)
+            logger.info(f"Progress: {progress}% - {step}")
+        
         try:
             logger.info(f"Processing image with model: {model_id}")
             logger.info(f"Parameters: {parameters}")
+            update_progress("Initializing...", 5)
             
             # Načti a připrav vstupní obrázek
             input_image = Image.open(io.BytesIO(image_data)).convert("RGB")
             logger.info(f"Input image loaded: {input_image.size}")
+            update_progress("Image loaded", 10)
             
             # Resize image pokud je příliš velký (pro memory management)
             max_size = 768
@@ -177,9 +185,39 @@ class AIProcessor:
                 new_size = tuple(int(dim * ratio) for dim in input_image.size)
                 input_image = input_image.resize(new_size, Image.Resampling.LANCZOS)
                 logger.info(f"Image resized to: {input_image.size}")
+            update_progress("Image preprocessed", 15)
             
-            # Načti pipeline
-            pipeline = self._load_pipeline(model_id)
+            # Zkontroluj typ modelu
+            update_progress("Checking model type...", 20)
+            model_info = self.model_manager.get_model_info(model_id)
+            if not model_info:
+                raise FileNotFoundError(f"Model {model_id} not found")
+            
+            # Určení base modelu a LoRA
+            base_model_id = model_id
+            lora_models = parameters.get("loras", [])
+            
+            if model_info.type == "lora":
+                # Pokud je vybraný model LoRA, použij default base model
+                available_full_models = self.model_manager.get_models()
+                if not available_full_models:
+                    raise ValueError("No full models available. LoRA models require a base model.")
+                
+                # Použij první dostupný full model jako base
+                base_model_id = available_full_models[0]["id"]
+                # Přidej vybraný LoRA model do seznamu
+                lora_models = [{"id": model_id, "weight": 1.0}] + lora_models
+                logger.info(f"Using LoRA {model_id} with base model {base_model_id}")
+                update_progress(f"Using LoRA {model_id} with base {base_model_id}", 25)
+            
+            # Načti pipeline s base modelem
+            update_progress(f"Loading model {base_model_id}...", 30)
+            pipeline = self._load_pipeline(base_model_id)
+            
+            # Verifikuj že se model skutečně načetl
+            if pipeline is None:
+                raise RuntimeError(f"Failed to load model {base_model_id}")
+            update_progress("Model loaded successfully", 50)
             
             # Nastavení parametrů
             strength = parameters.get("strength", 0.7)
@@ -187,29 +225,36 @@ class AIProcessor:
             num_inference_steps = parameters.get("steps", 20)
             sampler = parameters.get("sampler", "Euler a")
             seed = parameters.get("seed")
-            lora_models = parameters.get("loras", [])  # Seznam LoRA modelů
             prompt = parameters.get("prompt", "high quality, detailed, masterpiece")
             negative_prompt = parameters.get("negative_prompt", "low quality, blurry, artifacts")
             
             # Nastavení scheduleru
+            update_progress("Setting up scheduler...", 55)
             self._set_scheduler(pipeline, sampler)
             
             # Načti LoRA modely pokud jsou specifikované
-            for lora_config in lora_models:
-                if isinstance(lora_config, dict):
-                    lora_id = lora_config.get("id")
-                    lora_weight = lora_config.get("weight", 1.0)
-                elif isinstance(lora_config, str):
-                    lora_id = lora_config
-                    lora_weight = 1.0
-                else:
-                    continue
+            if lora_models:
+                update_progress("Loading LoRA models...", 60)
+                for i, lora_config in enumerate(lora_models):
+                    if isinstance(lora_config, dict):
+                        lora_id = lora_config.get("id")
+                        lora_weight = lora_config.get("weight", 1.0)
+                    elif isinstance(lora_config, str):
+                        lora_id = lora_config
+                        lora_weight = 1.0
+                    else:
+                        continue
+                    
+                    if lora_id:
+                        try:
+                            update_progress(f"Loading LoRA {lora_id}...", 60 + (i * 5))
+                            self._load_lora(pipeline, lora_id, lora_weight)
+                            logger.info(f"LoRA {lora_id} loaded successfully")
+                        except Exception as e:
+                            logger.error(f"Failed to load LoRA {lora_id}: {e}")
+                            raise RuntimeError(f"LoRA loading failed: {e}")
                 
-                if lora_id:
-                    try:
-                        self._load_lora(pipeline, lora_id, lora_weight)
-                    except Exception as e:
-                        logger.warning(f"Failed to load LoRA {lora_id}: {e}")
+                update_progress("All LoRA models loaded", 70)
             
             # Generování
             generator = None
@@ -220,33 +265,67 @@ class AIProcessor:
                 generator = torch.Generator(device=self.device).manual_seed(seed)
             
             logger.info(f"Starting generation with seed: {seed}")
+            update_progress("Starting AI generation...", 75)
             
-            # Spusť generování
-            with torch.autocast(self.device):
-                result_images = pipeline(
-                    prompt=prompt,
-                    negative_prompt=negative_prompt,
-                    image=input_image,
-                    strength=strength,
-                    guidance_scale=guidance_scale,
-                    num_inference_steps=num_inference_steps,
-                    generator=generator,
-                    num_images_per_request=1
-                ).images
+            # Custom callback pro sledování progress během generování
+            def diffusion_callback(step: int, timestep: int, latents):
+                progress = 75 + int((step / num_inference_steps) * 20)  # 75-95%
+                update_progress(f"Generating step {step+1}/{num_inference_steps}", progress)
+            
+            # Spusť generování s progress callback
+            try:
+                with torch.autocast(self.device):
+                    result_images = pipeline(
+                        prompt=prompt,
+                        negative_prompt=negative_prompt,
+                        image=input_image,
+                        strength=strength,
+                        guidance_scale=guidance_scale,
+                        num_inference_steps=num_inference_steps,
+                        generator=generator,
+                        num_images_per_request=1,
+                        callback=diffusion_callback,
+                        callback_steps=1
+                    ).images
+                    
+                if not result_images or len(result_images) == 0:
+                    raise RuntimeError("AI generation failed - no images generated")
+                    
+                update_progress("Generation completed", 95)
+                
+            except Exception as e:
+                logger.error(f"AI generation failed: {e}")
+                raise RuntimeError(f"AI generation failed: {str(e)}")
             
             # Uložení výsledku
+            update_progress("Saving result...", 96)
             result_id = str(uuid.uuid4())
             result_filename = f"result_{result_id}.jpg"
             result_path = self.output_path / result_filename
             
             generated_image = result_images[0]
-            generated_image.save(result_path, "JPEG", quality=95)
+            
+            # Verifikuj že obrázek je validní
+            if generated_image is None:
+                raise RuntimeError("Generated image is None")
+            
+            try:
+                generated_image.save(result_path, "JPEG", quality=95)
+                update_progress("Image saved", 98)
+            except Exception as e:
+                raise RuntimeError(f"Failed to save image: {str(e)}")
             
             # Vytvoř base64 URL pro frontend
-            with open(result_path, "rb") as f:
-                image_bytes = f.read()
-                image_base64 = base64.b64encode(image_bytes).decode()
-                image_url = f"data:image/jpeg;base64,{image_base64}"
+            try:
+                with open(result_path, "rb") as f:
+                    image_bytes = f.read()
+                    if len(image_bytes) == 0:
+                        raise RuntimeError("Saved image file is empty")
+                    image_base64 = base64.b64encode(image_bytes).decode()
+                    image_url = f"data:image/jpeg;base64,{image_base64}"
+                update_progress("Processing complete", 100)
+            except Exception as e:
+                raise RuntimeError(f"Failed to encode image: {str(e)}")
             
             result = {
                 "id": result_id,

@@ -223,17 +223,27 @@ async def scan_disk():
         }
 
 async def process_image_background(job_id: str, image_data: bytes, model_id: str, parameters: Dict):
-    """Background task pro zpracování obrázku"""
+    """Background task pro zpracování obrázku s reálným progress trackingem"""
     global ai_processor, jobs_storage
     
+    def progress_callback(step: str, progress: int):
+        """Callback pro update progress v real-time"""
+        if job_id in jobs_storage:
+            jobs_storage[job_id]["progress"] = progress
+            jobs_storage[job_id]["current_step"] = step
+            logger.info(f"Job {job_id}: {progress}% - {step}")
+    
     try:
-        # Update job status
+        # Inicializace
         jobs_storage[job_id]["status"] = "processing"
-        jobs_storage[job_id]["progress"] = 10
-        jobs_storage[job_id]["current_step"] = "Loading model..."
+        progress_callback("Starting processing...", 0)
         
-        # Process image
-        result = await ai_processor.process_image(image_data, model_id, parameters)
+        # Verifikace AI processoru
+        if ai_processor is None:
+            raise RuntimeError("AI Processor not initialized")
+        
+        # Process image s progress callback
+        result = await ai_processor.process_image(image_data, model_id, parameters, progress_callback)
         
         # Update job with results
         frontend_result = {
@@ -260,12 +270,43 @@ async def process_image_background(job_id: str, image_data: bytes, model_id: str
         logger.info(f"Job {job_id} completed successfully")
         
     except Exception as e:
-        logger.error(f"Job {job_id} failed: {e}")
+        # Detailní error handling s konkrétními důvody
+        error_type = type(e).__name__
+        error_message = str(e)
+        
+        # Kategorizace chyb pro lepší UX
+        if "Model" in error_message and "not found" in error_message:
+            user_message = f"Model '{model_id}' nebyl nalezen. Zkontrolujte dostupné modely."
+            current_step = "Model loading failed"
+        elif "LoRA" in error_message:
+            user_message = f"Chyba při načítání LoRA modelu: {error_message}"
+            current_step = "LoRA loading failed"
+        elif "generation failed" in error_message.lower():
+            user_message = f"AI generování selhalo: {error_message}"
+            current_step = "AI generation failed"
+        elif "CUDA" in error_message or "memory" in error_message.lower():
+            user_message = "Nedostatek GPU paměti. Zkuste snížit rozlišení nebo počet kroků."
+            current_step = "GPU memory error"
+        elif "No full models available" in error_message:
+            user_message = "Nejsou dostupné žádné základní modely. LoRA modely vyžadují základní model."
+            current_step = "No base models available"
+        else:
+            user_message = f"Neočekávaná chyba: {error_message}"
+            current_step = "Processing failed"
+        
+        logger.error(f"Job {job_id} failed [{error_type}]: {error_message}")
+        
         jobs_storage[job_id].update({
             "status": "failed",
             "progress": 0,
-            "current_step": "Processing failed",
-            "error_message": str(e),
+            "current_step": current_step,
+            "error_message": user_message,
+            "error_details": {
+                "type": error_type,
+                "message": error_message,
+                "model_id": model_id,
+                "parameters": parameters
+            },
             "completed_at": datetime.now().timestamp()
         })
 
