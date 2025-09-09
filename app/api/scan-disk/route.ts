@@ -33,7 +33,6 @@ export async function POST(request: NextRequest) {
             type: 'full',
             fileSize: stats.size,
             uploadedAt: stats.mtime.getTime(),
-            isActive: false,
             path: filePath
           })
         }
@@ -53,7 +52,6 @@ export async function POST(request: NextRequest) {
             type: 'lora',
             fileSize: stats.size,
             uploadedAt: stats.mtime.getTime(),
-            isActive: false,
             path: filePath
           })
         }

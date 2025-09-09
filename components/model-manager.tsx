@@ -29,7 +29,6 @@ export interface AIModel {
   type: "lora" | "full"
   fileSize: number
   uploadedAt: number
-  isActive: boolean
   metadata?: {
     description?: string
     tags?: string[]
@@ -162,11 +161,6 @@ export function ModelManager({
                                 >
                                   {model.type.toUpperCase()}
                                 </Badge>
-                                {!model.isActive && (
-                                  <Badge variant="destructive" className="text-xs">
-                                    Neaktivní
-                                  </Badge>
-                                )}
                               </div>
                             </div>
                             <Button 
@@ -285,11 +279,6 @@ export function ModelManager({
                                 >
                                   {model.type.toUpperCase()}
                                 </Badge>
-                                {!model.isActive && (
-                                  <Badge variant="destructive" className="text-xs">
-                                    Neaktivní
-                                  </Badge>
-                                )}
                               </div>
                             </div>
                             <Button 
@@ -371,9 +360,9 @@ export function ModelManager({
             </div>
             <div>
               <p className="text-2xl font-bold text-green-600">
-                {models.filter(m => m.isActive).length}
+                {models.length}
               </p>
-              <p className="text-xs text-muted-foreground">Aktivních</p>
+              <p className="text-xs text-muted-foreground">Celkem</p>
             </div>
           </div>
         </div>
