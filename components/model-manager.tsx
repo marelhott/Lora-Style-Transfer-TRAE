@@ -19,7 +19,8 @@ import {
   HardDrive,
   Clock,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Circle
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -153,7 +154,15 @@ export function ModelManager({
                         <div className="space-y-2">
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{model.name}</p>
+                              <div className="flex items-center space-x-2">
+                                <p className="text-sm font-medium truncate">{model.name}</p>
+                                {selectedModelId === model.id && (
+                                  <div className="flex items-center space-x-1">
+                                    <Circle className="w-2 h-2 fill-green-500 text-green-500 animate-pulse" />
+                                    <span className="text-xs text-green-600 font-medium">Aktivní</span>
+                                  </div>
+                                )}
+                              </div>
                               <div className="flex items-center space-x-2 mt-1">
                                 <Badge 
                                   variant={model.type === "lora" ? "secondary" : "outline"} 
@@ -271,7 +280,15 @@ export function ModelManager({
                         <div className="space-y-2">
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{model.name}</p>
+                              <div className="flex items-center space-x-2">
+                                <p className="text-sm font-medium truncate">{model.name}</p>
+                                {selectedModelId === model.id && (
+                                  <div className="flex items-center space-x-1">
+                                    <Circle className="w-2 h-2 fill-green-500 text-green-500 animate-pulse" />
+                                    <span className="text-xs text-green-600 font-medium">Aktivní</span>
+                                  </div>
+                                )}
+                              </div>
                               <div className="flex items-center space-x-2 mt-1">
                                 <Badge 
                                   variant={model.type === "lora" ? "secondary" : "outline"} 
