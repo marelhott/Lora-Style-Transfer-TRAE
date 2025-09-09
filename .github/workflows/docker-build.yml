@@ -2,7 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ ai_main_bf4a8d844cd1, main, master ]
+    branches: [ trae-ai-development ]
   workflow_dispatch:
 
 jobs:
