@@ -196,7 +196,24 @@ export default function Home() {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      const { job_id } = await response.json()
+      const startData = await response.json()
+      const job_id = startData.job_id
+
+      // If API already returned results, show them immediately (skip polling)
+      if (startData.result || startData.results) {
+        const incoming = Array.isArray(startData.results)
+          ? startData.results
+          : [startData.result]
+        if (incoming && incoming.length > 0) {
+          setLocalResults(prev => [...incoming, ...prev])
+          setSelectedResultId(incoming[0].id)
+          setProcessingStatus('completed')
+          setProgress(100)
+          setCurrentStep('Processing complete')
+          setIsProcessing(false)
+          return
+        }
+      }
       
       // Poll for status updates
       const pollStatus = async () => {
@@ -251,8 +268,19 @@ export default function Home() {
         setTimeout(pollStatus, 2000)
       }
       
-      // Start polling
-      setTimeout(pollStatus, 1000)
+      // Start polling with a hard timeout fallback
+      const maxPollingMs = 20000
+      const timeoutId = setTimeout(() => {
+        setProcessingStatus('failed')
+        setCurrentStep('Timeout: processing took too long')
+        setIsProcessing(false)
+      }, maxPollingMs)
+
+      const startPoll = async () => {
+        await pollStatus()
+        clearTimeout(timeoutId)
+      }
+      setTimeout(startPoll, 1000)
 
     } catch (error) {
       console.error('Error during processing:', error)
