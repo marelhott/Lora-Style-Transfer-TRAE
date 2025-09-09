@@ -1,8 +1,8 @@
-# 🎨 LoRA Style Transfer - Clean Version
+# 🎨 LoRA Style Transfer
 
 [![Build and Push Docker Image](https://github.com/marelhott/Lora-Style-Transfer/actions/workflows/docker-build.yml/badge.svg)](https://github.com/marelhott/Lora-Style-Transfer/actions/workflows/docker-build.yml)
 
-**AI-powered LoRA style transfer application** built with Next.js, FastAPI, and Convex. Optimized for RunPod deployment with persistent disk support.
+AI style transfer aplikace postavená na Next.js API Routes + Python workeru. Optimalizováno pro RunPod s persistentním diskem `/data`.
 
 ## 🚀 Quick Start - RunPod Deployment
 
@@ -23,14 +23,11 @@ volumeMounts:
 ports:
   - containerPort: 3000  # Frontend
     public: true
-  - containerPort: 8000  # Backend API
-    public: true
+  # Používá se pouze Next.js server (API Routes). 8000 není potřeba.
 
 env:
   - name: "DATA_PATH"
     value: "/data"
-  - name: "NEXT_PUBLIC_API_URL"
-    value: "https://<RUNPOD_ID>-8000.proxy.runpod.net"
 ```
 
 ### **3. Deploy to RunPod**
@@ -39,10 +36,8 @@ env:
 docker run -d \
   --gpus all \
   -p 3000:3000 \
-  -p 8000:8000 \
   -v /data:/data \
   -e DATA_PATH=/data \
-  -e NEXT_PUBLIC_API_URL=https://<RUNPOD_ID>-8000.proxy.runpod.net \
   mulenmara1505/lora-style-transfer-new:latest
 
 # Option B: Standalone
@@ -74,12 +69,11 @@ Place your models in the persistent disk:
 - **Results Gallery** - view, download, favorites
 - **Preset Manager** - save/load parameter presets
 
-### ✅ **Backend (FastAPI)**
-- **`/api/models`** - list available models
-- **`/api/process`** - start AI processing
-- **`/api/status/{job_id}`** - track job progress
-- **`/api/health`** - health check + GPU info
-- **`/api/rescan`** - rescan model directories
+### ✅ **Next.js API (server-side)**
+- **`/api/models`** - listuje dostupné modely a LoRA přímo z `/data`
+- **`/api/scan-disk`** - ruční scan disků (volitelně)
+- **`/api/process`** - spustí Python worker (backend/process_image.py)
+- **`/api/status/{jobId}`** - vrací stav jobu z in-memory storage
 
 ### ✅ **Database (Convex)**
 - **Results** - store generated images
@@ -95,26 +89,19 @@ npm run dev:frontend-only
 # http://localhost:3000
 ```
 
-### **Full Stack**
+### **Development**
 ```bash
-# Terminal 1: Frontend
-npm run dev:frontend-only
-
-# Terminal 2: Backend
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
-# http://localhost:8000
+npm install
+npm run dev
+# http://localhost:3000
 ```
 
 ## 🐳 Docker Build
 
 ### **Build Image**
 ```bash
-chmod +x scripts/docker-build-and-push.sh
-./scripts/docker-build-and-push.sh latest
+docker build -t ghcr.io/<user>/lora-style-transfer:latest .
+docker push ghcr.io/<user>/lora-style-transfer:latest
 ```
 
 ### **Test Locally**
@@ -128,22 +115,10 @@ docker run --rm -it \
 ## 🔍 Troubleshooting
 
 ### **"No models found"**
-```bash
-# Check model paths
-curl http://localhost:8000/api/debug/paths
-
-# Rescan models
-curl -X GET http://localhost:8000/api/rescan
-```
+Zkontrolujte, že jsou soubory v `/data/models` a `/data/loras` a že RunPod mountuje `/data` do kontejneru.
 
 ### **"Frontend can't connect to backend"**
-```bash
-# Check backend health
-curl http://localhost:8000/api/health
-
-# Set explicit API URL
-export NEXT_PUBLIC_API_URL=http://localhost:8000
-```
+V této verzi není samostatný backend server; vše běží na portu 3000.
 
 ### **"CUDA not available"**
 ```bash
@@ -157,7 +132,7 @@ python3 -c "import torch; print(torch.cuda.is_available())"
 ## 📊 Hardware Requirements
 
 ### **Minimum**
-- GPU: RTX 4090, Tesla V100 (12GB+ VRAM)
+- GPU: RTX 4000 Ada (12GB+ VRAM)
 - RAM: 16GB
 - Storage: 50GB+ for app + models
 
@@ -170,18 +145,15 @@ python3 -c "import torch; print(torch.cuda.is_available())"
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/health` | GET | Health check + GPU info |
 | `/api/models` | GET | List available models |
 | `/api/process` | POST | Start image processing |
 | `/api/status/{job_id}` | GET | Get job status |
-| `/api/rescan` | GET | Rescan model directories |
-| `/api/debug/paths` | GET | Debug model paths |
+| `/api/scan-disk` | POST | Scan disk for models |
 
 ## 🔗 URLs
 
-After deployment:
-- **Frontend**: `https://<RUNPOD_ID>-3000.proxy.runpod.net`
-- **Backend API**: `https://<RUNPOD_ID>-8000.proxy.runpod.net`
+Po nasazení:
+- **Aplikace**: `https://<RUNPOD_ID>-3000.proxy.runpod.net`
 
 ## 📝 License
 
