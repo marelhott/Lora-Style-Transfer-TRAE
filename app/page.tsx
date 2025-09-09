@@ -64,6 +64,7 @@ export default function Home() {
   const [localResults, setLocalResults] = useState<GeneratedResult[]>([])
   const [debugEntries, setDebugEntries] = useState<{ t: number, level: 'info' | 'warn' | 'error', msg: string }[]>([])
   
+  const [versionInfo, setVersionInfo] = useState<any>(null)
   const [parameters, setParameters] = useState<ProcessingParameters>({
     strength: 0.7,
     cfgScale: 7.5,
@@ -391,10 +392,23 @@ export default function Home() {
     }
   }
 
+  // Load version info
+  const loadVersionInfo = async () => {
+    try {
+      const res = await fetch('/', { cache: 'no-store' })
+      if (res.ok) {
+        const data = await res.json()
+        setVersionInfo(data)
+      }
+    } catch (error) {
+      console.error('Failed to load version info:', error)
+    }
+  }
+
   useEffect(() => {
     console.log("🚀 Frontend component mounted")
     loadModels()
-    
+    loadVersionInfo()
     
     // Reload models when backend URL changes
     const handleStorageChange = () => {
@@ -420,6 +434,24 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Version Info Banner */}
+      {versionInfo && (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-bold">✅ {versionInfo.message}</p>
+              <p className="text-sm">Verze: {versionInfo.version} | Build: {versionInfo.build_date}</p>
+              {versionInfo.features && (
+                <p className="text-xs mt-1">Funkce: {versionInfo.features.join(', ')}</p>
+              )}
+            </div>
+            <span className="bg-green-50 px-2 py-1 rounded text-xs font-mono">
+               {versionInfo.branch || 'trae-ai'}
+             </span>
+          </div>
+        </div>
+      )}
+      
       {/* Main Layout */}
       <ErrorBoundary>
         <div className="w-full px-0 py-6">
