@@ -51,8 +51,15 @@ class AIProcessor:
             result_filename = f"result_{result_id}.jpg"
             result_path = self.output_path / result_filename
             
-            # Ulož původní obrázek jako "výsledek" (zatím mock)
-            image.save(result_path, "JPEG", quality=95)
+            # Viditelná úprava: převod do odstínů šedi + zelený pruh vlevo
+            image_rgb = image.convert("RGB")
+            gray = image_rgb.convert("L").convert("RGB")
+            # Přidej sytě zelený pruh 8px vlevo jako značku průchodu workerem
+            import PIL.ImageDraw as ImageDraw
+            draw = ImageDraw.Draw(gray)
+            pruh_width = max(8, image.width // 200)
+            draw.rectangle([0, 0, pruh_width, image.height], fill=(0, 255, 128))
+            gray.save(result_path, "JPEG", quality=95)
             
             # Vytvoř base64 URL pro frontend
             with open(result_path, "rb") as f:

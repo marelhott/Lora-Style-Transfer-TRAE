@@ -19,6 +19,7 @@ import { ParameterControls, ProcessingParameters } from "@/components/parameter-
 import { ProgressTracker, ProcessingStatus } from "@/components/progress-tracker"
 import { ModelManager, AIModel } from "@/components/model-manager"
 import { ResultsGallery, GeneratedResult } from "@/components/results-gallery"
+import { DebugConsole } from "@/components/debug-console"
 
 import { ErrorBoundary } from "@/components/error-boundary"
 
@@ -61,6 +62,7 @@ export default function Home() {
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null)
   const progressTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [localResults, setLocalResults] = useState<GeneratedResult[]>([])
+  const [debugEntries, setDebugEntries] = useState<{ t: number, level: 'info' | 'warn' | 'error', msg: string }[]>([])
   
   const [parameters, setParameters] = useState<ProcessingParameters>({
     strength: 0.7,
@@ -151,6 +153,7 @@ export default function Home() {
     setUploadedFile(file)
     const url = URL.createObjectURL(file)
     setUploadedImage(url)
+    setDebugEntries(prev => [...prev, { t: Date.now(), level: 'info', msg: `Obrázek nahrán: ${file.name} (${file.size} B)` }])
   }
 
   const handleRemoveImage = () => {
@@ -172,6 +175,7 @@ export default function Home() {
 
     setIsProcessing(true)
     setProcessingStatus("initializing")
+    setDebugEntries(prev => [...prev, { t: Date.now(), level: 'info', msg: `Start zpracování | model=${selectedModelId} | size=${uploadedFile.size}` }])
     setProgress(5)
     setCurrentStep("Preparing request...")
     setElapsedTime(0)
@@ -205,11 +209,13 @@ export default function Home() {
       })
 
       if (!response.ok) {
+        setDebugEntries(prev => [...prev, { t: Date.now(), level: 'error', msg: `Process HTTP ${response.status}` }])
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
       const startData = await response.json()
       const job_id = startData.job_id
+      setDebugEntries(prev => [...prev, { t: Date.now(), level: 'info', msg: `Job ID: ${job_id}` }])
 
       // If API already returned results, show them immediately (skip polling)
       if (startData.result || startData.results) {
@@ -227,6 +233,7 @@ export default function Home() {
           setProgress(100)
           setCurrentStep('Processing complete')
           setIsProcessing(false)
+          setDebugEntries(prev => [...prev, { t: Date.now(), level: 'info', msg: `Immediate results: ${incoming.length}` }])
           return
         }
       }
@@ -243,6 +250,7 @@ export default function Home() {
 
         clearTimeout(statusTimeoutId)
         const statusData = await statusResponse.json()
+        setDebugEntries(prev => [...prev, { t: Date.now(), level: 'info', msg: `Status=${statusData.status} | progress=${statusData.progress || 0}` }])
         
         setProcessingStatus(statusData.status)
         setCurrentStep(statusData.current_step || "Processing...")
@@ -280,6 +288,7 @@ export default function Home() {
             setSelectedResultId(statusData.results[0].id)
           }
           setIsProcessing(false)
+          setDebugEntries(prev => [...prev, { t: Date.now(), level: 'info', msg: `Dokončeno s ${statusData.results?.length || 0} výsledky` }])
           return
         }
         
@@ -288,6 +297,7 @@ export default function Home() {
             clearInterval(progressTimerRef.current)
             progressTimerRef.current = null
           }
+          setDebugEntries(prev => [...prev, { t: Date.now(), level: 'error', msg: `Chyba: ${statusData.error_message || 'Processing failed'}` }])
           throw new Error(statusData.error_message || 'Processing failed')
         }
         
@@ -305,6 +315,7 @@ export default function Home() {
           progressTimerRef.current = null
         }
         setIsProcessing(false)
+        setDebugEntries(prev => [...prev, { t: Date.now(), level: 'warn', msg: 'Timeout exceed 25s' }])
       }, maxPollingMs)
 
       const startPoll = async () => {
@@ -522,6 +533,16 @@ export default function Home() {
                     // Modely se mazají přímo v /data/models/ přes RunPod interface
                   }}
                   onScanDisk={scanDisk}
+                />
+              </ErrorBoundary>
+            </div>
+
+            {/* Diagnostics */}
+            <div>
+              <ErrorBoundary>
+                <DebugConsole
+                  entries={debugEntries}
+                  onClear={() => setDebugEntries([])}
                 />
               </ErrorBoundary>
             </div>
