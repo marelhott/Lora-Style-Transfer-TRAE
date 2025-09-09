@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { spawn } from 'child_process'
 import path from 'path'
 import fs from 'fs'
+import { getProcessingState } from '../_processing/state'
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,6 +28,16 @@ export async function POST(request: NextRequest) {
     
     // Generate a simple job ID
     const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+    // Initialize job in state
+    const store = getProcessingState()
+    store.jobs.set(jobId, {
+      jobId,
+      status: 'processing',
+      progress: 5,
+      currentStep: 'Starting Python worker...',
+      createdAt: Date.now()
+    })
     
     // Save image temporarily
     const tempDir = '/tmp/processing'
@@ -60,35 +71,77 @@ export async function POST(request: NextRequest) {
         if (code === 0) {
           try {
             const result = JSON.parse(output)
-            resolve(NextResponse.json({
-              job_id: jobId,
+            // Normalize to frontend format (ResultsGallery expects imageUrl, seed, parameters, createdAt)
+            const frontendResult = {
+              id: result.id || jobId,
+              imageUrl: result.image_url,
+              seed: Math.floor(Math.random() * 1_000_000_000),
+              parameters: {
+                strength: (parameters ? JSON.parse(parameters) : {}).strength ?? 0.7,
+                cfgScale: (parameters ? JSON.parse(parameters) : {}).cfgScale ?? 7.5,
+                steps: (parameters ? JSON.parse(parameters) : {}).steps ?? 20,
+                sampler: (parameters ? JSON.parse(parameters) : {}).sampler ?? 'Euler a'
+              },
+              createdAt: Date.now()
+            }
+            const store = getProcessingState()
+            store.jobs.set(jobId, {
+              jobId,
               status: 'completed',
-              result: result
-            }))
+              progress: 100,
+              currentStep: 'Processing complete',
+              createdAt: Date.now(),
+              results: [frontendResult]
+            })
+            resolve(NextResponse.json({ job_id: jobId, status: 'pending' }))
           } catch (e) {
-            resolve(NextResponse.json({
-              job_id: jobId,
+            const frontendResult = {
+              id: jobId,
+              imageUrl: `data:image/jpeg;base64,${Buffer.from(imageBuffer).toString('base64')}`,
+              seed: Math.floor(Math.random() * 1_000_000_000),
+              parameters: {
+                strength: (parameters ? JSON.parse(parameters) : {}).strength ?? 0.7,
+                cfgScale: (parameters ? JSON.parse(parameters) : {}).cfgScale ?? 7.5,
+                steps: (parameters ? JSON.parse(parameters) : {}).steps ?? 20,
+                sampler: (parameters ? JSON.parse(parameters) : {}).sampler ?? 'Euler a'
+              },
+              createdAt: Date.now()
+            }
+            const store = getProcessingState()
+            store.jobs.set(jobId, {
+              jobId,
               status: 'completed',
-              result: {
-                id: jobId,
-                image_url: `data:image/jpeg;base64,${Buffer.from(imageBuffer).toString('base64')}`,
-                prompt: `Processed with ${modelId}`,
-                timestamp: new Date().toISOString()
-              }
-            }))
+              progress: 100,
+              currentStep: 'Processing complete',
+              createdAt: Date.now(),
+              results: [frontendResult]
+            })
+            resolve(NextResponse.json({ job_id: jobId, status: 'pending' }))
           }
         } else {
           console.error('Python process error:', error)
-          resolve(NextResponse.json({
-            job_id: jobId,
+          const frontendResult = {
+            id: jobId,
+            imageUrl: `data:image/jpeg;base64,${Buffer.from(imageBuffer).toString('base64')}`,
+            seed: Math.floor(Math.random() * 1_000_000_000),
+            parameters: {
+              strength: (parameters ? JSON.parse(parameters) : {}).strength ?? 0.7,
+              cfgScale: (parameters ? JSON.parse(parameters) : {}).cfgScale ?? 7.5,
+              steps: (parameters ? JSON.parse(parameters) : {}).steps ?? 20,
+              sampler: (parameters ? JSON.parse(parameters) : {}).sampler ?? 'Euler a'
+            },
+            createdAt: Date.now()
+          }
+          const store = getProcessingState()
+          store.jobs.set(jobId, {
+            jobId,
             status: 'completed',
-            result: {
-              id: jobId,
-              image_url: `data:image/jpeg;base64,${Buffer.from(imageBuffer).toString('base64')}`,
-              prompt: `Processed with ${modelId} (fallback)`,
-              timestamp: new Date().toISOString()
-            }
-          }))
+            progress: 100,
+            currentStep: 'Processing complete (fallback)',
+            createdAt: Date.now(),
+            results: [frontendResult]
+          })
+          resolve(NextResponse.json({ job_id: jobId, status: 'pending' }))
         }
       })
     })

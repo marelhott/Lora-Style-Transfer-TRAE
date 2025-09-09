@@ -59,6 +59,7 @@ export default function Home() {
   const [elapsedTime, setElapsedTime] = useState<number>(0)
   const [estimatedTime, setEstimatedTime] = useState<number | undefined>(undefined)
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null)
+  const [localResults, setLocalResults] = useState<GeneratedResult[]>([])
   
   const [parameters, setParameters] = useState<ProcessingParameters>({
     strength: 0.7,
@@ -82,6 +83,12 @@ export default function Home() {
     isFavorite: result.isFavorite
   }))
 
+  // Prefer locally generated results first (fallback when Convex save fails)
+  const displayedResults: GeneratedResult[] = [
+    ...localResults,
+    ...convertedResults
+  ]
+
 
 
   const handleToggleResultFavorite = async (resultId: string) => {
@@ -93,7 +100,7 @@ export default function Home() {
   }
 
   const handleDownload = (resultId: string) => {
-    const result = convertedResults.find(r => r.id === resultId)
+    const result = displayedResults.find(r => r.id === resultId)
     if (result) {
       // Create download link
       const link = document.createElement('a')
@@ -106,7 +113,7 @@ export default function Home() {
   }
 
   const handleDownloadAll = () => {
-    convertedResults.forEach((result, index) => {
+    displayedResults.forEach((result, index) => {
       setTimeout(() => {
         const link = document.createElement('a')
         link.href = result.imageUrl
@@ -214,14 +221,23 @@ export default function Home() {
         }
         
         if (statusData.status === 'completed') {
-          // Save results to database
+          // Save results to database, with local fallback
+          let saved = false
           try {
-            const resultIds = await createResults({ results: statusData.results })
-            if (resultIds.length > 0) {
-              setSelectedResultId(resultIds[0])
+            if (statusData.results && statusData.results.length > 0) {
+              const resultIds = await createResults({ results: statusData.results })
+              if (resultIds && resultIds.length > 0) {
+                setSelectedResultId(resultIds[0])
+                saved = true
+              }
             }
           } catch (error) {
             console.error("Failed to save results to database:", error)
+          }
+          if (!saved && statusData.results && statusData.results.length > 0) {
+            // Fallback: show results locally without DB
+            setLocalResults(prev => [...statusData.results, ...prev])
+            setSelectedResultId(statusData.results[0].id)
           }
           setIsProcessing(false)
           return
@@ -321,12 +337,12 @@ export default function Home() {
     }
   }, [])
 
-  // Set selected result when results change
+  // Set selected result when results change (prefer local)
   useEffect(() => {
-    if (convertedResults.length > 0 && !selectedResultId) {
-      setSelectedResultId(convertedResults[0].id)
+    if (displayedResults.length > 0 && !selectedResultId) {
+      setSelectedResultId(displayedResults[0].id)
     }
-  }, [convertedResults, selectedResultId])
+  }, [displayedResults, selectedResultId])
 
   return (
     <div className="min-h-screen bg-background">
@@ -406,7 +422,7 @@ export default function Home() {
               <div className="h-[480px]"> {/* Increased from h-96 (384px) to 480px */}
                 <ErrorBoundary>
                   <ResultsGallery
-                    results={convertedResults}
+                    results={displayedResults}
                     selectedResultId={selectedResultId}
                     onResultSelect={setSelectedResultId}
                     onDownload={handleDownload}
