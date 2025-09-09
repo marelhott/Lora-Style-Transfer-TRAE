@@ -14,9 +14,10 @@ import base64
 from pathlib import Path
 import stat
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, BackgroundTasks
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import torch
 import gc
@@ -56,20 +57,17 @@ TEMP_PATH = Path("/tmp/processing")
 # Ensure directories exist
 TEMP_PATH.mkdir(parents=True, exist_ok=True)
 
-# CORS middleware - opraveno pro RunPod
+# CORS middleware - úplně otevřené pro RunPod
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "*",  # Povolit všechny origins
-        "http://localhost:3000",
-        "https://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://127.0.0.1:3000"
-    ],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
     allow_headers=["*"]
 )
+
+# Serve frontend static files
+app.mount("/", StaticFiles(directory="/app/.next/static", html=True), name="static")
 
 # Pydantic models
 class ProcessingParameters(BaseModel):

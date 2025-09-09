@@ -30,35 +30,8 @@ import { Id } from "@/convex/_generated/dataModel"
 // API endpoint for RunPod backend
 // Zjednodušená detekce API URL
 const getApiBaseUrl = () => {
-  // 1. Environment variable (nejvyšší priorita)
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL
-  }
-
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname
-
-    // 2. RunPod proxy auto-detection
-    if (hostname.includes('proxy.runpod.net')) {
-      const match = hostname.match(/^([^-]+)(?:-(\d+))?\.proxy\.runpod\.net$/)
-      if (match) {
-        const [, baseId] = match
-        return `https://${baseId}-8000.proxy.runpod.net`
-      }
-    }
-
-    // 3. Localhost detection
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'http://localhost:8000'
-    }
-
-    // 4. Generic same-host fallback
-    const protocol = window.location.protocol
-    return `${protocol}//${hostname}:8000`
-  }
-
-  // 5. Server-side fallback
-  return 'http://localhost:8000'
+  // Použij relativní cesty - backend slouží i frontend
+  return ''
 }
 
 // API_BASE_URL se volá dynamicky v loadModels funkci
