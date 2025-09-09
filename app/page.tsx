@@ -60,7 +60,7 @@ export default function Home() {
   const [elapsedTime, setElapsedTime] = useState<number>(0)
   const [estimatedTime, setEstimatedTime] = useState<number | undefined>(undefined)
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null)
-  const progressTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const progressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [localResults, setLocalResults] = useState<GeneratedResult[]>([])
   const [debugEntries, setDebugEntries] = useState<{ t: number, level: 'info' | 'warn' | 'error', msg: string }[]>([])
   
@@ -454,12 +454,14 @@ export default function Home() {
       
       {/* Main Layout */}
       <ErrorBoundary>
+        <>
         <div className="w-full px-0 py-6">
           <div className="grid grid-cols-12 gap-4 min-h-[calc(100vh-140px)] w-full">
             
             {/* Left Sidebar - Parameters & Presets */}
             <div className="col-span-2 space-y-4 overflow-y-auto custom-scrollbar pl-4">
               <ErrorBoundary>
+                <>
                 <ParameterControls
                   parameters={parameters}
                   onParametersChange={setParameters}
@@ -489,6 +491,7 @@ export default function Home() {
                     }
                   }}
                 />
+                </>
               </ErrorBoundary>
 
             </div>
@@ -515,6 +518,7 @@ export default function Home() {
 
               {/* Progress Tracking - moved above results */}
               <ErrorBoundary>
+                <>
                 <ProgressTracker
                   status={processingStatus}
                   progress={progress}
@@ -522,11 +526,13 @@ export default function Home() {
                   estimatedTimeRemaining={estimatedTime}
                   elapsedTime={elapsedTime}
                 />
+                </>
               </ErrorBoundary>
 
               {/* Results Gallery - increased height by 20% */}
               <div className="h-[480px]"> {/* Increased from h-96 (384px) to 480px */}
                 <ErrorBoundary>
+                  <>
                   <ResultsGallery
                     results={displayedResults}
                     selectedResultId={selectedResultId}
@@ -536,6 +542,7 @@ export default function Home() {
                     onToggleFavorite={handleToggleResultFavorite}
                     onShare={handleShare}
                   />
+                  </>
                 </ErrorBoundary>
               </div>
             </div>
@@ -544,14 +551,17 @@ export default function Home() {
             <div className="col-span-3 space-y-4 overflow-y-auto custom-scrollbar pr-4">
               {/* Image Upload - moved to right sidebar */}
               <ErrorBoundary>
+                <>
                 <ImageUpload
                   onImageUpload={handleImageUpload}
                   uploadedImage={uploadedImage}
                   onRemoveImage={handleRemoveImage}
                 />
+                </>
               </ErrorBoundary>
 
               <ErrorBoundary>
+                <>
                 <ModelManager
                   models={models}
                   selectedModelId={selectedModelId}
@@ -566,20 +576,24 @@ export default function Home() {
                   }}
                   onScanDisk={scanDisk}
                 />
+                </>
               </ErrorBoundary>
             </div>
 
             {/* Diagnostics */}
             <div>
               <ErrorBoundary>
+                <>
                 <DebugConsole
                   entries={debugEntries}
                   onClear={() => setDebugEntries([])}
                 />
+                </>
               </ErrorBoundary>
             </div>
           </div>
         </div>
+        </>
       </ErrorBoundary>
     </div>
   )
