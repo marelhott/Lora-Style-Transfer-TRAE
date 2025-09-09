@@ -178,13 +178,21 @@ class ModelManager:
     """Správce modelů pro LoRA Style Transfer"""
     
     def __init__(self, models_path: str = "/data/models", loras_path: str = "/data/loras"):
-        self.models_path = Path(models_path)
-        self.loras_path = Path(loras_path)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         
-        # Vytvoř adresáře pokud neexistují
-        self.models_path.mkdir(parents=True, exist_ok=True)
-        self.loras_path.mkdir(parents=True, exist_ok=True)
+        # Paths s fallback pro development
+        try:
+            self.models_path = Path(models_path)
+            self.loras_path = Path(loras_path)
+            self.models_path.mkdir(parents=True, exist_ok=True)
+            self.loras_path.mkdir(parents=True, exist_ok=True)
+        except (PermissionError, OSError):
+            # Fallback pro development
+            self.models_path = Path("/tmp/lora_models")
+            self.loras_path = Path("/tmp/lora_loras")
+            self.models_path.mkdir(parents=True, exist_ok=True)
+            self.loras_path.mkdir(parents=True, exist_ok=True)
+            logger.warning(f"Using fallback paths: models={self.models_path}, loras={self.loras_path}")
         
         # Model cache
         available_memory = self._get_available_gpu_memory()

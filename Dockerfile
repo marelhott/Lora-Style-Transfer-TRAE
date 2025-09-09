@@ -67,6 +67,7 @@ COPY components/ /app/components/
 COPY convex/ /app/convex/
 COPY lib/ /app/lib/
 COPY hooks/ /app/hooks/
+COPY runpod_backend.py /app/
 COPY package.json /app/
 COPY next.config.js /app/
 COPY tailwind.config.ts /app/

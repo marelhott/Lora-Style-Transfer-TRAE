@@ -9,7 +9,7 @@ import json
 import uuid
 import gc
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any, Union, Tuple
 import logging
 import asyncio
 from datetime import datetime
@@ -37,6 +37,9 @@ from transformers import CLIPTextModel, CLIPTokenizer
 from safetensors.torch import load_file
 import accelerate
 
+# Local imports
+from model_manager import ModelManager
+
 logger = logging.getLogger(__name__)
 
 class AIProcessor:
@@ -44,10 +47,16 @@ class AIProcessor:
     
     def __init__(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.output_path = Path("/data/outputs")
         
-        # Vytvoř output složku
-        self.output_path.mkdir(parents=True, exist_ok=True)
+        # Output path s fallback pro development
+        try:
+            self.output_path = Path("/data/outputs")
+            self.output_path.mkdir(parents=True, exist_ok=True)
+        except (PermissionError, OSError):
+            # Fallback pro development
+            self.output_path = Path("/tmp/lora_outputs")
+            self.output_path.mkdir(parents=True, exist_ok=True)
+            logger.warning(f"Using fallback output path: {self.output_path}")
         
         # Model manager
         self.model_manager = ModelManager()
