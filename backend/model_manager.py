@@ -62,6 +62,14 @@ class ModelManager:
             for model_file in self.models_path.rglob("*.ckpt"):
                 if model_file.is_file():
                     self._register_model(model_file, "full")
+            
+            # A také .pt a .pth soubory (běžné pro SD modely)
+            for model_file in self.models_path.rglob("*.pt"):
+                if model_file.is_file():
+                    self._register_model(model_file, "full")
+            for model_file in self.models_path.rglob("*.pth"):
+                if model_file.is_file():
+                    self._register_model(model_file, "full")
         
         # Scan LoRA models
         if self.loras_path.exists():
@@ -190,7 +198,7 @@ class ModelManager:
                     torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
                     use_safetensors=True
                 )
-            elif model_path.endswith('.ckpt'):
+            elif model_path.endswith('.ckpt') or model_path.endswith('.pt') or model_path.endswith('.pth'):
                 pipeline = StableDiffusionPipeline.from_single_file(
                     model_path,
                     torch_dtype=torch.float16 if self.device == "cuda" else torch.float32

@@ -60,91 +60,16 @@ fi
 # Spuštění podle módu
 case "${1:-full}" in
     "full")
-        echo "🐳 Starting full stack (frontend + backend)..."
+        echo "🌐 Starting Next.js application..."
         
-        # Nastav environment variables pro frontend
-        export NEXT_PUBLIC_API_URL="http://localhost:8000"
-        
-        # Spustit backend v pozadí
-        cd /app/backend
-        echo "🔧 Starting backend..."
-        python main.py &
-        BACKEND_PID=$!
-        
-        # Počkat na backend a ověřit že běží
-        echo "⏳ Waiting for backend to start..."
-        for i in {1..10}; do
-            if curl -f http://localhost:8000/api/health >/dev/null 2>&1; then
-                echo "✅ Backend is running on port 8000"
-                break
-            fi
-            echo "   Attempt $i/10: Backend not ready yet..."
-            sleep 2
-        done
-        
-        # Ověřit že backend skutečně běží
-        if ! curl -f http://localhost:8000/api/health >/dev/null 2>&1; then
-            echo "❌ ERROR: Backend failed to start properly"
-            echo "   Trying fallback simple HTTP server..."
-            
-            # Kill failed backend
-            pkill -f "python main.py" 2>/dev/null || true
-            
-            # Start simple HTTP server for testing
-            cd /app/backend
-            python3 -c "
-import http.server
-import socketserver
-import json
-import os
-
-class SimpleHandler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == '/api/health':
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            response = {'status': 'healthy', 'mode': 'fallback'}
-            self.wfile.write(json.dumps(response).encode())
-        elif self.path == '/api/test':
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            response = {'message': 'Fallback server working', 'models_path': '/data/models', 'loras_path': '/data/loras'}
-            self.wfile.write(json.dumps(response).encode())
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-with socketserver.TCPServer(('', 8000), SimpleHandler) as httpd:
-    print('Fallback HTTP server running on port 8000')
-    httpd.serve_forever()
-" &
-            BACKEND_PID=$!
-            
-            # Wait for fallback server
-            sleep 2
-            if curl -f http://localhost:8000/api/health >/dev/null 2>&1; then
-                echo "✅ Fallback server is running"
-            else
-                echo "❌ Even fallback server failed"
-                exit 1
-            fi
-        fi
-        
-        # Build frontend pro statické servování
+        # Build frontend
         cd /app
-        echo "🌐 Building frontend for static serving..."
+        echo "🔨 Building frontend..."
         npm run build
         
-        echo "✅ Single service started (backend + frontend)"
-        echo "   Application: http://localhost:8000"
-        echo "   API: http://localhost:8000/api"
-        
-        # Počkat na ukončení backendu
-        wait $BACKEND_PID
+        # Start Next.js production server
+        echo "🚀 Starting Next.js server..."
+        npm start
         ;;
         
     "backend")

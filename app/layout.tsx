@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   description: "Transform your images with AI-powered style transfer using advanced neural networks, LoRA models, and customizable parameters for stunning artistic results.",
 }
 
+export const dynamic = 'force-dynamic'
+
 export default function RootLayout({
   children,
 }: {

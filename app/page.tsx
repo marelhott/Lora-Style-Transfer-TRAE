@@ -27,11 +27,9 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
 
-// API endpoint for RunPod backend
-// Zjednodušená detekce API URL
+// API endpoint - jednoduché relativní cesty
 const getApiBaseUrl = () => {
-  // Použij relativní cesty - backend slouží i frontend
-  return ''
+  return '' // Next.js API routes
 }
 
 // API_BASE_URL se volá dynamicky v loadModels funkci
@@ -248,43 +246,13 @@ export default function Home() {
     }
   }
 
-  // Debug funkce pro diagnostiku problémů
-  const debugBackend = async () => {
-    try {
-      const apiUrl = getApiBaseUrl()
-      const response = await fetch(`${apiUrl}/api/debug/paths`, { cache: 'no-store' })
-      if (response.ok) {
-        const debugInfo = await response.json()
-        console.log("🔍 Backend Debug Info:", debugInfo)
 
-        // Pokud nejsou modely nalezeny, zkus rescan
-        if (debugInfo.available_models === 0) {
-          console.warn("⚠️ Žádné modely nenalezeny, zkouším rescan...")
-          const rescanResponse = await fetch(`${apiUrl}/api/rescan`, { cache: 'no-store' })
-          if (rescanResponse.ok) {
-            const rescanResult = await rescanResponse.json()
-            console.log("🔄 Rescan result:", rescanResult)
-
-            // Pokud rescan našel modely, reload je
-            if (rescanResult.models_found > 0) {
-              console.log("✅ Modely nalezeny po rescanu, reloaduji...")
-              setTimeout(() => loadModels(), 1000)
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error("❌ Debug backend failed:", error)
-    }
-  }
-
-  // Robustní scan disku
+  // Scan disk using Next.js API
   const scanDisk = async () => {
     try {
-      const apiUrl = getApiBaseUrl()
-      console.log("🔍 Scanning disk at:", apiUrl)
+      console.log("🔍 Scanning disk...")
       
-      const response = await fetch(`${apiUrl}/api/scan-disk`, { 
+      const response = await fetch('/api/scan-disk', { 
         method: 'POST',
         cache: 'no-store' 
       })
@@ -294,13 +262,12 @@ export default function Home() {
         console.log("🔍 Disk Scan Result:", scanResult)
         
         if (scanResult.status === 'success') {
-          const { manual_scan, managed_scan } = scanResult
-          console.log(`📊 Found ${manual_scan.models_count} models, ${manual_scan.loras_count} LoRAs`)
-          console.log("📁 Models path:", manual_scan.models_path)
-          console.log("📁 LoRAs path:", manual_scan.loras_path)
+          console.log(`📊 Found ${scanResult.models_count} models, ${scanResult.loras_count} LoRAs`)
+          console.log("📁 Models path:", scanResult.models_path)
+          console.log("📁 LoRAs path:", scanResult.loras_path)
           
           // Reload modely pokud byly nalezeny
-          if (manual_scan.models_count > 0 || manual_scan.loras_count > 0) {
+          if (scanResult.total_count > 0) {
             console.log("✅ Modely nalezeny, reloaduji...")
             setTimeout(() => loadModels(), 1000)
           }
@@ -315,44 +282,21 @@ export default function Home() {
     }
   }
 
-  // Load models from API
+  // Load models from Next.js API route
   const loadModels = async () => {
     try {
-      // Zjednodušená detekce API URL
-      let apiUrl = 'http://localhost:8000'
-      
-      if (typeof window !== 'undefined') {
-        const hostname = window.location.hostname
-        
-        // RunPod proxy detection
-        if (hostname.includes('proxy.runpod.net')) {
-          const match = hostname.match(/^([^-]+)(?:-(\d+))?\.proxy\.runpod\.net$/)
-          if (match) {
-            const [, baseId] = match
-            apiUrl = `https://${baseId}-8000.proxy.runpod.net`
-          }
-        }
-      }
+      console.log('🔍 Loading models from Next.js API...')
 
-      console.log('🔍 Loading models from:', apiUrl)
-
-      const res = await fetch(`${apiUrl}/api/models`, {
-        method: 'GET',
-        headers: { 
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
+      const res = await fetch('/api/models', {
         cache: 'no-store'
       })
 
-      console.log('📡 Response status:', res.status)
-
       if (res.ok) {
-        const modelsData = await res.json()
-        console.log('✅ Models loaded:', modelsData.length)
-        setModels(Array.isArray(modelsData) ? modelsData : [])
+        const data = await res.json()
+        console.log('✅ Models loaded:', data.models?.length || 0)
+        setModels(data.models || [])
       } else {
-        console.error('❌ Failed to load models: HTTP', res.status)
+        console.error('❌ Failed to load models:', res.status)
         setModels([])
       }
     } catch (error) {
@@ -365,26 +309,6 @@ export default function Home() {
     console.log("🚀 Frontend component mounted")
     loadModels()
     
-    // Test frontend connectivity
-    const testConnectivity = async () => {
-      try {
-        const apiUrl = getApiBaseUrl()
-        console.log("🧪 Testing connectivity to:", apiUrl)
-        
-        const response = await fetch(`${apiUrl}/api/frontend-test`, { cache: 'no-store' })
-        if (response.ok) {
-          const data = await response.json()
-          console.log("✅ Frontend connectivity test passed:", data)
-        } else {
-          console.error("❌ Frontend connectivity test failed:", response.status)
-        }
-      } catch (error) {
-        console.error("❌ Frontend connectivity error:", error)
-      }
-    }
-    
-    // Spustit test po 2 sekundách
-    setTimeout(testConnectivity, 2000)
     
     // Reload models when backend URL changes
     const handleStorageChange = () => {
