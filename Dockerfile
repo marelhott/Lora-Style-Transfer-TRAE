@@ -78,23 +78,19 @@ COPY .env /app/
 # Vytvoření dočasných adresářů
 RUN mkdir -p /tmp/processing
 
-# Nastavení oprávnění
-RUN chmod +x /app/backend/main.py
+# (není potřeba nastavovat spustitelné bity na backend/main.py – neexistuje)
 
 # Instalace frontend závislostí a build
 WORKDIR /app
 RUN npm install --verbose || (npm cache clean --force && npm install --verbose)
 RUN npm run build
 
-# Zpět do backend adresáře
-WORKDIR /app/backend
-
-# Health check
+# Health check (Next.js běží na 3000)
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
+    CMD curl -f http://localhost:3000 || exit 1
 
 # Exponování portů
-EXPOSE 8000 3000
+EXPOSE 3000
 
 # Spouštěcí skript
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
