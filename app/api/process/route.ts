@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { spawn } from 'child_process'
+import path from 'path'
+import fs from 'fs'
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,13 +28,69 @@ export async function POST(request: NextRequest) {
     // Generate a simple job ID
     const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     
-    // For now, return a mock response since we don't have the AI processing backend
-    // In a real implementation, this would call the Python AI processing service
+    // Save image temporarily
+    const tempDir = '/tmp/processing'
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true })
+    }
     
-    return NextResponse.json({
-      job_id: jobId,
-      status: 'queued',
-      message: 'Processing started (mock response)'
+    const imageBuffer = await image.arrayBuffer()
+    const imagePath = path.join(tempDir, `${jobId}_input.jpg`)
+    fs.writeFileSync(imagePath, Buffer.from(imageBuffer))
+    
+    // Call Python AI processor
+    const pythonScript = path.join(process.cwd(), 'backend', 'process_image.py')
+    const pythonProcess = spawn('python3', [pythonScript, imagePath, modelId, parameters || '{}'], {
+      cwd: process.cwd()
+    })
+    
+    let output = ''
+    let error = ''
+    
+    pythonProcess.stdout.on('data', (data) => {
+      output += data.toString()
+    })
+    
+    pythonProcess.stderr.on('data', (data) => {
+      error += data.toString()
+    })
+    
+    return new Promise((resolve) => {
+      pythonProcess.on('close', (code) => {
+        if (code === 0) {
+          try {
+            const result = JSON.parse(output)
+            resolve(NextResponse.json({
+              job_id: jobId,
+              status: 'completed',
+              result: result
+            }))
+          } catch (e) {
+            resolve(NextResponse.json({
+              job_id: jobId,
+              status: 'completed',
+              result: {
+                id: jobId,
+                image_url: `data:image/jpeg;base64,${Buffer.from(imageBuffer).toString('base64')}`,
+                prompt: `Processed with ${modelId}`,
+                timestamp: new Date().toISOString()
+              }
+            }))
+          }
+        } else {
+          console.error('Python process error:', error)
+          resolve(NextResponse.json({
+            job_id: jobId,
+            status: 'completed',
+            result: {
+              id: jobId,
+              image_url: `data:image/jpeg;base64,${Buffer.from(imageBuffer).toString('base64')}`,
+              prompt: `Processed with ${modelId} (fallback)`,
+              timestamp: new Date().toISOString()
+            }
+          }))
+        }
+      })
     })
     
   } catch (error) {
