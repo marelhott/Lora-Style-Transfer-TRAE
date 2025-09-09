@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -59,6 +59,7 @@ export default function Home() {
   const [elapsedTime, setElapsedTime] = useState<number>(0)
   const [estimatedTime, setEstimatedTime] = useState<number | undefined>(undefined)
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null)
+  const progressTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [localResults, setLocalResults] = useState<GeneratedResult[]>([])
   
   const [parameters, setParameters] = useState<ProcessingParameters>({
@@ -171,10 +172,21 @@ export default function Home() {
 
     setIsProcessing(true)
     setProcessingStatus("initializing")
-    setProgress(0)
+    setProgress(5)
     setCurrentStep("Preparing request...")
     setElapsedTime(0)
     setEstimatedTime(undefined)
+
+    // Smooth progress animation up to 85%
+    if (progressTimerRef.current) {
+      clearInterval(progressTimerRef.current)
+    }
+    progressTimerRef.current = setInterval(() => {
+      setProgress(prev => {
+        const next = prev + 2
+        return next >= 85 ? 85 : next
+      })
+    }, 200)
 
     const startTime = Date.now()
 
@@ -208,6 +220,10 @@ export default function Home() {
           setLocalResults(prev => [...incoming, ...prev])
           setSelectedResultId(incoming[0].id)
           setProcessingStatus('completed')
+          if (progressTimerRef.current) {
+            clearInterval(progressTimerRef.current)
+            progressTimerRef.current = null
+          }
           setProgress(100)
           setCurrentStep('Processing complete')
           setIsProcessing(false)
@@ -230,7 +246,9 @@ export default function Home() {
         
         setProcessingStatus(statusData.status)
         setCurrentStep(statusData.current_step || "Processing...")
-        setProgress(statusData.progress || 0)
+        if (typeof statusData.progress === 'number') {
+          setProgress(p => Math.max(p, statusData.progress))
+        }
         setElapsedTime((Date.now() - startTime) / 1000)
         
         if (statusData.estimated_time_remaining) {
@@ -238,6 +256,11 @@ export default function Home() {
         }
         
         if (statusData.status === 'completed') {
+          if (progressTimerRef.current) {
+            clearInterval(progressTimerRef.current)
+            progressTimerRef.current = null
+          }
+          setProgress(100)
           // Save results to database, with local fallback
           let saved = false
           try {
@@ -261,6 +284,10 @@ export default function Home() {
         }
         
         if (statusData.status === 'failed') {
+          if (progressTimerRef.current) {
+            clearInterval(progressTimerRef.current)
+            progressTimerRef.current = null
+          }
           throw new Error(statusData.error_message || 'Processing failed')
         }
         
@@ -269,10 +296,14 @@ export default function Home() {
       }
       
       // Start polling with a hard timeout fallback
-      const maxPollingMs = 20000
+      const maxPollingMs = 25000
       const timeoutId = setTimeout(() => {
         setProcessingStatus('failed')
         setCurrentStep('Timeout: processing took too long')
+        if (progressTimerRef.current) {
+          clearInterval(progressTimerRef.current)
+          progressTimerRef.current = null
+        }
         setIsProcessing(false)
       }, maxPollingMs)
 
@@ -362,6 +393,10 @@ export default function Home() {
     
     return () => {
       window.removeEventListener('storage', handleStorageChange)
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current)
+        progressTimerRef.current = null
+      }
     }
   }, [])
 
