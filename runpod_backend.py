@@ -119,9 +119,18 @@ async def shutdown_event():
 async def root():
     """Root endpoint"""
     return {
-        "message": "LoRA Style Transfer RunPod Backend",
-        "version": "1.0.0",
-        "status": "running"
+        "message": "LoRA Style Transfer API - Trae AI Version",
+        "status": "running",
+        "version": "2.0.0-trae",
+        "build_date": "2025-01-09",
+        "features": [
+            "Real progress tracking",
+            "Proper error handling", 
+            "Model verification",
+            "LoRA auto-detection"
+        ],
+        "gpu_available": torch.cuda.is_available(),
+        "branch": "trae-ai-development"
     }
 
 @app.get("/api/health")
@@ -394,6 +403,19 @@ async def get_all_jobs():
     return {
         "jobs": list(jobs_storage.values()),
         "total_count": len(jobs_storage)
+    }
+
+@app.get("/api/debug/version")
+async def debug_version():
+    """Debug endpoint pro ověření verze a funkcí"""
+    return {
+        "version": "2.0.0-trae",
+        "progress_tracking": "ENABLED",
+        "error_handling": "ENHANCED", 
+        "model_verification": "ACTIVE",
+        "timestamp": datetime.now().isoformat(),
+        "ai_processor_loaded": ai_processor is not None,
+        "jobs_count": len(jobs_storage)
     }
 
 if __name__ == "__main__":
