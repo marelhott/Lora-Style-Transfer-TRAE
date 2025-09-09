@@ -136,8 +136,33 @@ with socketserver.TCPServer(('', 8000), SimpleHandler) as httpd:
         
         # Spustit frontend
         cd /app
+        echo "🌐 Starting frontend..."
         npm start &
         FRONTEND_PID=$!
+        
+        # Počkat na frontend a ověřit že běží
+        echo "⏳ Waiting for frontend to start..."
+        for i in {1..10}; do
+            if curl -f http://localhost:3000 >/dev/null 2>&1; then
+                echo "✅ Frontend is running on port 3000"
+                break
+            fi
+            echo "   Attempt $i/10: Frontend not ready yet..."
+            sleep 3
+        done
+        
+        # Ověřit že frontend skutečně běží
+        if ! curl -f http://localhost:3000 >/dev/null 2>&1; then
+            echo "❌ ERROR: Frontend failed to start properly"
+            echo "   Frontend logs:"
+            ps aux | grep node
+            echo "   Trying to restart frontend..."
+            pkill -f "next start" 2>/dev/null || true
+            sleep 2
+            cd /app
+            npm start &
+            FRONTEND_PID=$!
+        fi
         
         echo "✅ Both services started"
         echo "   Frontend: http://localhost:3000"

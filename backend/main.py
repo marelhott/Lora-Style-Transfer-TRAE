@@ -308,6 +308,17 @@ async def root():
     """Root endpoint - simple test"""
     return {"message": "LoRA Style Transfer Backend is running!", "status": "ok"}
 
+@app.get("/api/frontend-test")
+async def frontend_test():
+    """Test endpoint pro frontend"""
+    return {
+        "status": "ok",
+        "message": "Frontend can reach backend",
+        "timestamp": datetime.now().isoformat(),
+        "models_available": model_manager is not None,
+        "models_count": len(model_manager.get_available_models()) if model_manager else 0
+    }
+
 @app.get("/api/test")
 async def test_endpoint():
     """Simple test endpoint"""

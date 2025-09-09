@@ -389,7 +389,29 @@ export default function Home() {
   }
 
   useEffect(() => {
+    console.log("🚀 Frontend component mounted")
     loadModels()
+    
+    // Test frontend connectivity
+    const testConnectivity = async () => {
+      try {
+        const apiUrl = getApiBaseUrl()
+        console.log("🧪 Testing connectivity to:", apiUrl)
+        
+        const response = await fetch(`${apiUrl}/api/frontend-test`, { cache: 'no-store' })
+        if (response.ok) {
+          const data = await response.json()
+          console.log("✅ Frontend connectivity test passed:", data)
+        } else {
+          console.error("❌ Frontend connectivity test failed:", response.status)
+        }
+      } catch (error) {
+        console.error("❌ Frontend connectivity error:", error)
+      }
+    }
+    
+    // Spustit test po 2 sekundách
+    setTimeout(testConnectivity, 2000)
     
     // Reload models when backend URL changes
     const handleStorageChange = () => {
