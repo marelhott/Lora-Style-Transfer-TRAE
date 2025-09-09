@@ -56,12 +56,18 @@ TEMP_PATH = Path("/tmp/processing")
 # Ensure directories exist
 TEMP_PATH.mkdir(parents=True, exist_ok=True)
 
-# CORS middleware
+# CORS middleware - opraveno pro RunPod
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Povolit všechny origins pro debugging
-    allow_credentials=False,
-    allow_methods=["*"],
+    allow_origins=[
+        "*",  # Povolit všechny origins
+        "http://localhost:3000",
+        "https://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://127.0.0.1:3000"
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"]
 )
 
@@ -307,6 +313,19 @@ async def rescan_default_paths():
 async def root():
     """Root endpoint - simple test"""
     return {"message": "LoRA Style Transfer Backend is running!", "status": "ok"}
+
+@app.options("/{path:path}")
+async def options_handler(path: str):
+    """Handle CORS preflight requests"""
+    return JSONResponse(
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true"
+        }
+    )
 
 @app.get("/api/frontend-test")
 async def frontend_test():
