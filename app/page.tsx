@@ -23,30 +23,34 @@ import { DebugConsole } from "@/components/debug-console"
 
 import { ErrorBoundary } from "@/components/error-boundary"
 
-// Convex imports
-import { useQuery, useMutation } from "convex/react"
-import { api } from "@/convex/_generated/api"
-import { Id } from "@/convex/_generated/dataModel"
-
 // API endpoint - jednoduché relativní cesty
 const getApiBaseUrl = () => {
   return '' // Next.js API routes
 }
 
-// API_BASE_URL se volá dynamicky v loadModels funkci
-
 export default function Home() {
-  // Convex queries and mutations
-  const results = useQuery(api.results.getResults) || []
-  const createResults = useMutation(api.results.createResults)
-  const toggleResultFavorite = useMutation(api.results.toggleFavorite)
-
-  // Preset management
-  const presets = useQuery(api.presets.getPresets) || []
-  const createPreset = useMutation(api.presets.createPreset)
-  const updatePreset = useMutation(api.presets.updatePreset)
-  const deletePreset = useMutation(api.presets.deletePreset)
-  const togglePresetFavorite = useMutation(api.presets.toggleFavorite)
+  // Local state management (replacing Convex)
+  const [results, setResults] = useState<GeneratedResult[]>([])
+  const [presets, setPresets] = useState<any[]>([])
+  
+  // Load data from localStorage on mount
+  useEffect(() => {
+    const savedResults = localStorage.getItem('ai-results')
+    const savedPresets = localStorage.getItem('ai-presets')
+    if (savedResults) setResults(JSON.parse(savedResults))
+    if (savedPresets) setPresets(JSON.parse(savedPresets))
+  }, [])
+  
+  // Helper functions for local storage
+  const saveResults = (newResults: GeneratedResult[]) => {
+    setResults(newResults)
+    localStorage.setItem('ai-results', JSON.stringify(newResults))
+  }
+  
+  const savePresets = (newPresets: any[]) => {
+    setPresets(newPresets)
+    localStorage.setItem('ai-presets', JSON.stringify(newPresets))
+  }
 
   // State management
   const [models, setModels] = useState<AIModel[]>([])
@@ -79,7 +83,7 @@ export default function Home() {
 
   // Convert Convex results to frontend format
   const convertedResults: GeneratedResult[] = results.map(result => ({
-    id: result._id,
+    id: result.id,
     imageUrl: result.imageUrl,
     seed: result.seed,
     parameters: result.parameters,
@@ -97,7 +101,12 @@ export default function Home() {
 
   const handleToggleResultFavorite = async (resultId: string) => {
     try {
-      await toggleResultFavorite({ id: resultId as Id<"results"> })
+      const updatedResults = results.map(result => 
+        result.id === resultId 
+          ? { ...result, isFavorite: !result.isFavorite }
+          : result
+      )
+      saveResults(updatedResults)
     } catch (error) {
       console.error("Failed to toggle result favorite:", error)
     }
@@ -270,23 +279,16 @@ export default function Home() {
             progressTimerRef.current = null
           }
           setProgress(100)
-          // Save results to database, with local fallback
-          let saved = false
-          try {
-            if (statusData.results && statusData.results.length > 0) {
-              const resultIds = await createResults({ results: statusData.results })
-              if (resultIds && resultIds.length > 0) {
-                setSelectedResultId(resultIds[0])
-                saved = true
-              }
-            }
-          } catch (error) {
-            console.error("Failed to save results to database:", error)
-          }
-          if (!saved && statusData.results && statusData.results.length > 0) {
-            // Fallback: show results locally without DB
-            setLocalResults(prev => [...statusData.results, ...prev])
-            setSelectedResultId(statusData.results[0].id)
+          // Save results to local storage
+          if (statusData.results && statusData.results.length > 0) {
+            const newResults = statusData.results.map((result: any, index: number) => ({
+              ...result,
+              id: `result_${Date.now()}_${index}`,
+              timestamp: new Date().toISOString(),
+              isFavorite: false
+            }))
+            saveResults([...results, ...newResults])
+            setSelectedResultId(newResults[0].id)
           }
           setIsProcessing(false)
           setDebugEntries(prev => [...prev, { t: Date.now(), level: 'info', msg: `Dokončeno s ${statusData.results?.length || 0} výsledky` }])
@@ -468,7 +470,14 @@ export default function Home() {
                   presets={presets}
                   onSavePreset={async (name: string, params: ProcessingParameters) => {
                     try {
-                      await createPreset({ name, parameters: params })
+                      const newPreset = {
+                        id: `preset_${Date.now()}`,
+                        name,
+                        parameters: params,
+                        isFavorite: false,
+                        createdAt: new Date().toISOString()
+                      }
+                      savePresets([...presets, newPreset])
                     } catch (error) {
                       console.error("Failed to save preset:", error)
                     }
@@ -478,14 +487,20 @@ export default function Home() {
                   }}
                   onDeletePreset={async (presetId: string) => {
                     try {
-                      await deletePreset({ id: presetId as Id<"presets"> })
+                      const updatedPresets = presets.filter(preset => preset.id !== presetId)
+                      savePresets(updatedPresets)
                     } catch (error) {
                       console.error("Failed to delete preset:", error)
                     }
                   }}
                   onTogglePresetFavorite={async (presetId: string) => {
                     try {
-                      await togglePresetFavorite({ id: presetId as Id<"presets"> })
+                      const updatedPresets = presets.map(preset => 
+                        preset.id === presetId 
+                          ? { ...preset, isFavorite: !preset.isFavorite }
+                          : preset
+                      )
+                      savePresets(updatedPresets)
                     } catch (error) {
                       console.error("Failed to toggle preset favorite:", error)
                     }
