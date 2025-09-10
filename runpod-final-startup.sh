@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # RunPod Final Startup Script
-# Opravuje problém s concurrently a používá persistent storage
+# Opravuje problém s concurrently a Tailwind CSS
 
 set -e  # Exit on any error
 
@@ -45,38 +45,50 @@ else
 fi
 
 # Nastav Node modules - vždy reinstall pro jistotu
-log "📦 Installing Node modules (ensuring concurrently is available)..."
+log "📦 Installing Node modules with all required dependencies..."
 
-# Pokud existuje cache na /data, zkus ji použít
-if [ -d "$DATA_DIR/node_modules" ]; then
-    log "🔗 Trying to use cached node_modules from /data..."
-    rm -rf node_modules 2>/dev/null || true
-    ln -sf "$DATA_DIR/node_modules" ./node_modules
-    
-    # Zkontroluj jestli concurrently existuje
-    if [ ! -f "node_modules/.bin/concurrently" ]; then
-        log "❌ concurrently not found in cache, reinstalling..."
-        rm -f node_modules
-        npm install
-        # Zkopíruj zpět na /data pro příště
-        cp -r node_modules "$DATA_DIR/" 2>/dev/null || true
-    else
-        log "✅ concurrently found in cached node_modules"
-    fi
-else
-    log "📦 No cached node_modules, installing fresh..."
-    npm install
-    # Zkopíruj na /data pro příště
-    mkdir -p "$DATA_DIR"
-    cp -r node_modules "$DATA_DIR/" 2>/dev/null || true
+# Vždy reinstall pro jistotu že máme všechny dependencies
+log "📦 Fresh npm install to ensure all dependencies..."
+npm install
+
+# Zkontroluj a doinstaluj chybějící Tailwind dependencies
+log "🎨 Ensuring Tailwind CSS dependencies..."
+if [ ! -f "node_modules/.bin/tailwindcss" ]; then
+    log "📦 Installing missing Tailwind CSS..."
+    npm install -D tailwindcss postcss autoprefixer
 fi
 
-# Ověř že concurrently je dostupný
+# Zkontroluj concurrently
+if [ ! -f "node_modules/.bin/concurrently" ]; then
+    log "📦 Installing missing concurrently..."
+    npm install -D concurrently
+fi
+
+# Ověř že všechny tools jsou dostupné
+log "🔍 Verifying tools availability..."
 if [ -f "node_modules/.bin/concurrently" ]; then
     log "✅ concurrently is available"
 else
-    log "❌ concurrently still not found, installing directly..."
-    npm install concurrently
+    log "❌ concurrently still missing"
+fi
+
+if [ -f "node_modules/.bin/tailwindcss" ]; then
+    log "✅ tailwindcss is available"
+else
+    log "❌ tailwindcss still missing"
+fi
+
+if [ -f "node_modules/.bin/next" ]; then
+    log "✅ next is available"
+else
+    log "❌ next still missing"
+fi
+
+# Zkopíruj node_modules na /data pro příště (pokud se podařilo)
+if [ -f "node_modules/.bin/concurrently" ] && [ -f "node_modules/.bin/tailwindcss" ]; then
+    log "💾 Caching node_modules to persistent storage..."
+    mkdir -p "$DATA_DIR"
+    cp -r node_modules "$DATA_DIR/" 2>/dev/null || true
 fi
 
 # Nastav environment variables
