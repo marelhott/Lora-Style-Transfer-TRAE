@@ -10,13 +10,7 @@ const nextConfig = {
     domains: ['localhost'],
     unoptimized: true,
   },
-  devIndicators: {
-    buildActivity: false,
-  },
-  experimental: {
-    allowedOrigins: ['localhost:3000', 'localhost:8000'],
-    serverComponentsExternalPackages: ['sharp'],
-  },
+  serverExternalPackages: ['sharp'],
   webpack: (config, { dev, isServer }) => {
     // Remove conflicting CSS rules that interfere with Next.js built-in CSS handling
     // Next.js already handles CSS/PostCSS/Tailwind processing correctly
