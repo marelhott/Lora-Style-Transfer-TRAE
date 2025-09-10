@@ -31,35 +31,15 @@ RUN python -m pip install --upgrade pip --no-cache-dir
 # Instalace PyTorch s CUDA podporou (největší download)
 RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
-# Instalace AI/ML dependencies (bez pevných verzí pro kompatibilitu)
+# Instalace zjednodušených AI dependencies
 RUN pip install --no-cache-dir \
-    diffusers \
-    transformers \
-    accelerate \
-    safetensors \
-    compel \
-    opencv-python \
-    huggingface-hub
-
-# Instalace xformers a bitsandbytes samostatně (mohou selhat)
-RUN pip install --no-cache-dir xformers || echo "xformers installation failed, continuing..."
-RUN pip install --no-cache-dir bitsandbytes || echo "bitsandbytes installation failed, continuing..."
-
-# Instalace základních Python balíčků
-RUN pip install --no-cache-dir \
-    fastapi \
-    uvicorn \
-    requests==2.31.0 \
-    pillow==10.1.0 \
-    numpy==1.24.3 \
-    aiofiles==23.2.1 \
-    python-dotenv==1.0.0 \
-    psutil==5.9.6 \
-    pytest==7.4.3 \
-    pytest-asyncio==0.21.1 \
-    logging-tree==1.9 \
-    rich==13.7.0 \
-    pydantic-core==2.14.1
+    diffusers>=0.21.0 \
+    transformers>=4.25.0 \
+    safetensors>=0.3.0 \
+    fastapi>=0.100.0 \
+    uvicorn>=0.20.0 \
+    python-multipart>=0.0.6 \
+    pillow>=9.0.0
 
 # Vytvoření workspace adresáře
 RUN mkdir -p /workspace /data/models
