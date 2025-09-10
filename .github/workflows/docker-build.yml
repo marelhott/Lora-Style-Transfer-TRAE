@@ -37,6 +37,7 @@ jobs:
             ghcr.io/marelhott/lora-style-transfer-trae
           tags: |
             type=raw,value=latest
+            type=sha,prefix={{branch}}-
 
       - name: Build and push
         uses: docker/build-push-action@v5
