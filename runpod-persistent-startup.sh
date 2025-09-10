@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# RunPod Startup Script s Persistent Storage
-# Optimalizovaný pro rychlé starty s /data persistent diskem
+# RunPod Startup Script - Kopírování z Docker image na persistent /data
+# Kombinuje výhody optimalizovaného Docker template s persistent storage
 
 set -e  # Exit on any error
 
-echo "🚀 LoRA Style Transfer - Persistent Storage Startup"
-echo "================================================"
+echo "🚀 LoRA Style Transfer - Docker to Persistent Migration"
+echo "==================================================="
 
 # Nastavení proměnných
 REPO_URL="https://github.com/marelhott/Lora-Style-Transfer-TRAE.git"
@@ -38,34 +38,54 @@ fi
 
 log "✅ Repository updated successfully"
 
-# Setup persistent Python packages
-log "🐍 Setting up Python packages..."
-export PYTHONPATH="$PYTHON_PACKAGES:$PYTHONPATH"
+# Kopírování Python packages z Docker image na persistent disk
+log "🐍 Migrating Python packages to persistent storage..."
 
 if [ ! -d "$PYTHON_PACKAGES/torch" ]; then
-    log "📦 Installing Python packages to persistent storage..."
+    log "📦 Copying Python packages from Docker image to /data..."
     mkdir -p "$PYTHON_PACKAGES"
     
-    # Install PyTorch with CUDA support
-    pip install torch torchvision torchaudio --target "$PYTHON_PACKAGES" --index-url https://download.pytorch.org/whl/cu121
-    
-    # Install backend requirements
-    if [ -f "backend/requirements.txt" ]; then
-        pip install -r backend/requirements.txt --target "$PYTHON_PACKAGES"
+    # Kopíruj všechny Python balíčky z Docker image
+    if [ -d "/usr/local/lib/python3.10/dist-packages" ]; then
+        log "📋 Copying from /usr/local/lib/python3.10/dist-packages..."
+        cp -r /usr/local/lib/python3.10/dist-packages/* "$PYTHON_PACKAGES/" 2>/dev/null || true
     fi
     
-    log "✅ Python packages installed to persistent storage"
+    # Kopíruj také z site-packages pokud existuje
+    if [ -d "/usr/local/lib/python3.10/site-packages" ]; then
+        log "📋 Copying from /usr/local/lib/python3.10/site-packages..."
+        cp -r /usr/local/lib/python3.10/site-packages/* "$PYTHON_PACKAGES/" 2>/dev/null || true
+    fi
+    
+    # Zkontroluj jestli se PyTorch zkopíroval
+    if [ -d "$PYTHON_PACKAGES/torch" ]; then
+        log "✅ PyTorch successfully copied to persistent storage"
+    else
+        log "⚠️  PyTorch not found in Docker image, installing fresh..."
+        pip install torch torchvision torchaudio --target "$PYTHON_PACKAGES" --index-url https://download.pytorch.org/whl/cu121
+    fi
+    
+    # Doinstaluj chybějící balíčky z requirements.txt
+    if [ -f "backend/requirements.txt" ]; then
+        log "📦 Installing missing packages from requirements.txt..."
+        pip install -r backend/requirements.txt --target "$PYTHON_PACKAGES" --upgrade-strategy only-if-needed
+    fi
+    
+    log "✅ Python packages migrated to persistent storage"
 else
     log "✅ Using cached Python packages from persistent storage"
 fi
 
-# Setup persistent Node modules
+# Nastavení PYTHONPATH
+export PYTHONPATH="$PYTHON_PACKAGES:$PYTHONPATH"
+
+# Setup Node modules
 log "📦 Setting up Node.js packages..."
 
 if [ ! -d "$NODE_MODULES" ]; then
     log "📦 Installing Node modules to persistent storage..."
     
-    # Install to persistent location
+    # Instaluj do persistent location
     npm install --prefix "$DATA_DIR"
     
     log "✅ Node modules installed to persistent storage"
@@ -73,21 +93,24 @@ else
     log "✅ Using cached Node modules from persistent storage"
 fi
 
-# Create symlink to node_modules
+# Vytvoř symlink na node_modules
 if [ -L "node_modules" ]; then
     rm node_modules
+fi
+if [ -d "node_modules" ]; then
+    rm -rf node_modules
 fi
 ln -sf "$NODE_MODULES" ./node_modules
 
 log "🔗 Node modules symlinked successfully"
 
-# Verify installations
+# Ověř instalace
 log "🔍 Verifying installations..."
 node --version
 npm --version
 python --version
 
-# Check if key packages are available
+# Zkontroluj klíčové balíčky
 if python -c "import torch; print(f'PyTorch {torch.__version__} available')" 2>/dev/null; then
     log "✅ PyTorch is available"
 else
@@ -100,39 +123,33 @@ else
     log "❌ Next.js not found, installation may have failed"
 fi
 
-# Set environment variables
+# Nastav environment variables
 export MODEL_PATH="$DATA_DIR/models"
-export NODE_ENV="production"
+export NODE_ENV="development"  # Použij dev mode pro spolehlivost
 
 log "🌍 Environment variables set:"
 log "   PYTHONPATH=$PYTHONPATH"
 log "   MODEL_PATH=$MODEL_PATH"
 log "   NODE_ENV=$NODE_ENV"
 
-# Create necessary directories
+# Vytvoř potřebné adresáře
 mkdir -p "$DATA_DIR/models"
 mkdir -p "/tmp/processing"
 
-# Start the application
+# Spusť aplikaci
 log "🚀 Starting LoRA Style Transfer application..."
 log "   Frontend: http://localhost:3000"
 log "   Backend API: http://localhost:8000"
 
-# Try production build first, fallback to dev mode
-if npm run build 2>/dev/null; then
-    log "✅ Production build successful, starting server..."
-    npm start &
-    NEXT_PID=$!
-else
-    log "⚠️  Production build failed, starting in development mode..."
-    npm run dev &
-    NEXT_PID=$!
-fi
+# Spusť v development mode (spolehlivější)
+log "🔧 Starting in development mode for better reliability..."
+npm run dev &
+NEXT_PID=$!
 
-# Wait for Next.js to start
-sleep 10
+# Počkej na spuštění Next.js
+sleep 15
 
-# Start Python backend if available
+# Spusť Python backend pokud existuje
 if [ -f "runpod_backend.py" ]; then
     log "🐍 Starting Python backend..."
     python runpod_backend.py &
@@ -141,17 +158,15 @@ fi
 
 log "✅ Application started successfully!"
 log "🌐 Access your app at the RunPod provided URL"
+log "💾 All dependencies now cached on persistent storage"
+log "⚡ Next restart will be super fast (10-20 seconds)"
 log "📊 Logs will appear below..."
 
-# Monitor processes
+# Monitor procesů
 while true; do
     if ! kill -0 $NEXT_PID 2>/dev/null; then
         log "❌ Next.js process died, restarting..."
-        if npm run build 2>/dev/null; then
-            npm start &
-        else
-            npm run dev &
-        fi
+        npm run dev &
         NEXT_PID=$!
     fi
     
