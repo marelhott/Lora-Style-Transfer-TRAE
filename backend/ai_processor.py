@@ -5,378 +5,115 @@ Zpracovává obrázky pomocí AI modelů s reálným Stable Diffusion pipeline
 """
 
 import os
-import json
 import uuid
 import gc
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Union, Tuple
+from typing import Dict, Optional, Any
 import logging
 import asyncio
 from datetime import datetime
 
 import torch
-import numpy as np
 from PIL import Image
 import io
 import base64
 
 # Diffusers imports
-from diffusers import (
-    StableDiffusionImg2ImgPipeline,
-    StableDiffusionPipeline,
-    DiffusionPipeline,
-    DPMSolverMultistepScheduler,
-    EulerAncestralDiscreteScheduler,
-    EulerDiscreteScheduler,
-    LMSDiscreteScheduler,
-    HeunDiscreteScheduler,
-    KDPM2DiscreteScheduler,
-    KDPM2AncestralDiscreteScheduler
-)
-from transformers import CLIPTextModel, CLIPTokenizer
-from safetensors.torch import load_file
-import accelerate
-
-# Local imports
-from model_manager import ModelManager
+from diffusers import StableDiffusionPipeline
 
 logger = logging.getLogger(__name__)
 
 class AIProcessor:
-    """AI Processor pro zpracování obrázků s LoRA styly pomocí Stable Diffusion"""
+    """Simplified AI processor for style transfer using Stable Diffusion."""
     
-    def __init__(self):
+    def __init__(self, model_path: str = "/data/models"):
+        self.model_path = Path(model_path)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.pipe = None
         
-        # Output path s fallback pro development
+        # Performance settings
+        self.torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
+        
+        logger.info(f"AIProcessor initialized with device: {self.device}")
+        
+    async def initialize(self):
+        """Initialize the AI processor with default model."""
         try:
-            self.output_path = Path("/data/outputs")
-            self.output_path.mkdir(parents=True, exist_ok=True)
-        except (PermissionError, OSError):
-            # Fallback pro development
-            self.output_path = Path("/tmp/lora_outputs")
-            self.output_path.mkdir(parents=True, exist_ok=True)
-            logger.warning(f"Using fallback output path: {self.output_path}")
-        
-        # Model manager
-        self.model_manager = ModelManager()
-        
-        # Current pipeline state
-        self.current_pipeline = None
-        self.current_model_id = None
-        self.loaded_loras = set()
-        
-        # Scheduler mapping
-        self.schedulers = {
-            "Euler a": EulerAncestralDiscreteScheduler,
-            "Euler": EulerDiscreteScheduler,
-            "LMS": LMSDiscreteScheduler,
-            "Heun": HeunDiscreteScheduler,
-            "DPM2": KDPM2DiscreteScheduler,
-            "DPM2 a": KDPM2AncestralDiscreteScheduler,
-            "DPM++ 2M": DPMSolverMultistepScheduler,
-        }
-        
-        logger.info(f"AIProcessor initialized on device: {self.device}")
-        logger.info(f"CUDA available: {torch.cuda.is_available()}")
-        if torch.cuda.is_available():
-            logger.info(f"GPU: {torch.cuda.get_device_name()}")
-            logger.info(f"VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f}GB")
+            await self.load_model("runwayml/stable-diffusion-v1-5")
+            logger.info("AIProcessor initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize AIProcessor: {e}")
+            raise
     
-    def _load_pipeline(self, model_id: str) -> StableDiffusionImg2ImgPipeline:
-        """Načte Stable Diffusion pipeline pro daný model"""
-        if self.current_model_id == model_id and self.current_pipeline is not None:
-            logger.info(f"Using cached pipeline for model: {model_id}")
-            return self.current_pipeline
-        
-        # Vyčisti předchozí pipeline z paměti
-        if self.current_pipeline is not None:
-            self._cleanup_pipeline()
-        
-        # Načti pipeline přes model manager
+    async def load_model(self, model_id: str):
+        """Load a Stable Diffusion model."""
         try:
-            pipeline = self.model_manager.load_model(model_id)
-            self.current_pipeline = pipeline
-            self.current_model_id = model_id
-            self.loaded_loras.clear()  # Reset LoRA state
+            if self.pipe is not None:
+                del self.pipe
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
             
-            logger.info(f"Pipeline loaded successfully for model: {model_id}")
-            return pipeline
+            logger.info(f"Loading model: {model_id}")
+            
+            self.pipe = StableDiffusionPipeline.from_pretrained(
+                model_id,
+                torch_dtype=self.torch_dtype,
+                safety_checker=None,
+                requires_safety_checker=False
+            ).to(self.device)
+            
+            logger.info(f"Model {model_id} loaded successfully")
             
         except Exception as e:
             logger.error(f"Failed to load model {model_id}: {e}")
-            raise e
+            raise
     
-    def _load_lora(self, pipeline: StableDiffusionImg2ImgPipeline, lora_id: str, weight: float = 1.0):
-        """Načte a aplikuje LoRA na pipeline"""
-        if lora_id in self.loaded_loras:
-            logger.info(f"LoRA {lora_id} already loaded")
-            return
-        
-        lora_info = self.model_manager.get_model_info(lora_id)
-        if not lora_info or lora_info.type != "lora":
-            raise FileNotFoundError(f"LoRA {lora_id} not found")
-        
-        logger.info(f"Loading LoRA: {lora_id} with weight {weight}")
-        
+    async def process_image(
+        self, 
+        input_image: Image.Image, 
+        prompt: str = "high quality photo",
+        negative_prompt: str = "blurry, low quality",
+        strength: float = 0.8,
+        guidance_scale: float = 7.5,
+        num_inference_steps: int = 20
+    ) -> Image.Image:
+        """Process image with style transfer."""
         try:
-            # Načti LoRA weights
-            if lora_info.format == "safetensors":
-                lora_weights = load_file(lora_info.path)
-            else:
-                lora_weights = torch.load(lora_info.path, map_location=self.device)
+            if self.pipe is None:
+                raise ValueError("Model not loaded. Call initialize() first.")
             
-            # Aplikuj LoRA na pipeline (simplified - v reálné implementaci by bylo složitější)
-            if hasattr(pipeline, "load_lora_weights"):
-                pipeline.load_lora_weights(str(lora_info.path))
-                if hasattr(pipeline, "set_adapters"):
-                    pipeline.set_adapters([lora_id], adapter_weights=[weight])
-            else:
-                logger.warning(f"Pipeline doesn't support LoRA loading")
+            logger.info(f"Processing image with prompt: {prompt}")
             
-            self.loaded_loras.add(lora_id)
-            logger.info(f"LoRA {lora_id} loaded successfully")
+            # Convert to RGB if needed
+            if input_image.mode != "RGB":
+                input_image = input_image.convert("RGB")
+            
+            # Generate image
+            result = self.pipe(
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                image=input_image,
+                strength=strength,
+                guidance_scale=guidance_scale,
+                num_inference_steps=num_inference_steps,
+                generator=torch.Generator(device=self.device).manual_seed(42)
+            )
+            
+            return result.images[0]
             
         except Exception as e:
-            logger.error(f"Failed to load LoRA {lora_id}: {e}")
-            raise e
-    
-    def _cleanup_pipeline(self):
-        """Vyčistí současný pipeline"""
-        if self.current_pipeline is not None:
-            del self.current_pipeline
-            self.current_pipeline = None
-            self.current_model_id = None
-            self.loaded_loras.clear()
-            torch.cuda.empty_cache()
-            gc.collect()
-    
-    def _set_scheduler(self, pipeline: StableDiffusionImg2ImgPipeline, sampler: str):
-        """Nastaví scheduler podle názvu sampleru"""
-        if sampler in self.schedulers:
-            scheduler_class = self.schedulers[sampler]
-            pipeline.scheduler = scheduler_class.from_config(pipeline.scheduler.config)
-            logger.info(f"Scheduler set to: {sampler}")
-        else:
-            logger.warning(f"Unknown sampler: {sampler}, using default")
-    
-    async def process_image(self, image_data: bytes, model_id: str, parameters: Dict, progress_callback=None) -> Dict:
-        """Zpracuje obrázek s daným modelem a parametry pomocí Stable Diffusion"""
-        def update_progress(step: str, progress: int):
-            """Helper funkce pro update progress"""
-            if progress_callback:
-                progress_callback(step, progress)
-            logger.info(f"Progress: {progress}% - {step}")
-        
-        try:
-            logger.info(f"Processing image with model: {model_id}")
-            logger.info(f"Parameters: {parameters}")
-            update_progress("Initializing...", 5)
-            
-            # Načti a připrav vstupní obrázek
-            input_image = Image.open(io.BytesIO(image_data)).convert("RGB")
-            logger.info(f"Input image loaded: {input_image.size}")
-            update_progress("Image loaded", 10)
-            
-            # Resize image pokud je příliš velký (pro memory management)
-            max_size = 768
-            if max(input_image.size) > max_size:
-                ratio = max_size / max(input_image.size)
-                new_size = tuple(int(dim * ratio) for dim in input_image.size)
-                input_image = input_image.resize(new_size, Image.Resampling.LANCZOS)
-                logger.info(f"Image resized to: {input_image.size}")
-            update_progress("Image preprocessed", 15)
-            
-            # Zkontroluj typ modelu
-            update_progress("Checking model type...", 20)
-            model_info = self.model_manager.get_model_info(model_id)
-            if not model_info:
-                raise FileNotFoundError(f"Model {model_id} not found")
-            
-            # Určení base modelu a LoRA
-            base_model_id = model_id
-            lora_models = parameters.get("loras", [])
-            
-            if model_info.type == "lora":
-                # Pokud je vybraný model LoRA, použij default base model
-                available_full_models = self.model_manager.get_models()
-                if not available_full_models:
-                    raise ValueError("No full models available. LoRA models require a base model.")
-                
-                # Použij první dostupný full model jako base
-                base_model_id = available_full_models[0]["id"]
-                # Přidej vybraný LoRA model do seznamu
-                lora_models = [{"id": model_id, "weight": 1.0}] + lora_models
-                logger.info(f"Using LoRA {model_id} with base model {base_model_id}")
-                update_progress(f"Using LoRA {model_id} with base {base_model_id}", 25)
-            
-            # Načti pipeline s base modelem
-            update_progress(f"Loading model {base_model_id}...", 30)
-            pipeline = self._load_pipeline(base_model_id)
-            
-            # Verifikuj že se model skutečně načetl
-            if pipeline is None:
-                raise RuntimeError(f"Failed to load model {base_model_id}")
-            update_progress("Model loaded successfully", 50)
-            
-            # Nastavení parametrů
-            strength = parameters.get("strength", 0.7)
-            guidance_scale = parameters.get("cfgScale", 7.5)
-            num_inference_steps = parameters.get("steps", 20)
-            sampler = parameters.get("sampler", "Euler a")
-            seed = parameters.get("seed")
-            prompt = parameters.get("prompt", "high quality, detailed, masterpiece")
-            negative_prompt = parameters.get("negative_prompt", "low quality, blurry, artifacts")
-            
-            # Nastavení scheduleru
-            update_progress("Setting up scheduler...", 55)
-            self._set_scheduler(pipeline, sampler)
-            
-            # Načti LoRA modely pokud jsou specifikované
-            if lora_models:
-                update_progress("Loading LoRA models...", 60)
-                for i, lora_config in enumerate(lora_models):
-                    if isinstance(lora_config, dict):
-                        lora_id = lora_config.get("id")
-                        lora_weight = lora_config.get("weight", 1.0)
-                    elif isinstance(lora_config, str):
-                        lora_id = lora_config
-                        lora_weight = 1.0
-                    else:
-                        continue
-                    
-                    if lora_id:
-                        try:
-                            update_progress(f"Loading LoRA {lora_id}...", 60 + (i * 5))
-                            self._load_lora(pipeline, lora_id, lora_weight)
-                            logger.info(f"LoRA {lora_id} loaded successfully")
-                        except Exception as e:
-                            logger.error(f"Failed to load LoRA {lora_id}: {e}")
-                            raise RuntimeError(f"LoRA loading failed: {e}")
-                
-                update_progress("All LoRA models loaded", 70)
-            
-            # Generování
-            generator = None
-            if seed is not None:
-                generator = torch.Generator(device=self.device).manual_seed(int(seed))
-            else:
-                seed = torch.randint(0, 2**32, (1,)).item()
-                generator = torch.Generator(device=self.device).manual_seed(seed)
-            
-            logger.info(f"Starting generation with seed: {seed}")
-            update_progress("Starting AI generation...", 75)
-            
-            # Custom callback pro sledování progress během generování
-            def diffusion_callback(step: int, timestep: int, latents):
-                progress = 75 + int((step / num_inference_steps) * 20)  # 75-95%
-                update_progress(f"Generating step {step+1}/{num_inference_steps}", progress)
-            
-            # Spusť generování s progress callback
-            try:
-                with torch.autocast(self.device):
-                    result_images = pipeline(
-                        prompt=prompt,
-                        negative_prompt=negative_prompt,
-                        image=input_image,
-                        strength=strength,
-                        guidance_scale=guidance_scale,
-                        num_inference_steps=num_inference_steps,
-                        generator=generator,
-                        num_images_per_request=1,
-                        callback=diffusion_callback,
-                        callback_steps=1
-                    ).images
-                    
-                if not result_images or len(result_images) == 0:
-                    raise RuntimeError("AI generation failed - no images generated")
-                    
-                update_progress("Generation completed", 95)
-                
-            except Exception as e:
-                logger.error(f"AI generation failed: {e}")
-                raise RuntimeError(f"AI generation failed: {str(e)}")
-            
-            # Uložení výsledku
-            update_progress("Saving result...", 96)
-            result_id = str(uuid.uuid4())
-            result_filename = f"result_{result_id}.jpg"
-            result_path = self.output_path / result_filename
-            
-            generated_image = result_images[0]
-            
-            # Verifikuj že obrázek je validní
-            if generated_image is None:
-                raise RuntimeError("Generated image is None")
-            
-            try:
-                generated_image.save(result_path, "JPEG", quality=95)
-                update_progress("Image saved", 98)
-            except Exception as e:
-                raise RuntimeError(f"Failed to save image: {str(e)}")
-            
-            # Vytvoř base64 URL pro frontend
-            try:
-                with open(result_path, "rb") as f:
-                    image_bytes = f.read()
-                    if len(image_bytes) == 0:
-                        raise RuntimeError("Saved image file is empty")
-                    image_base64 = base64.b64encode(image_bytes).decode()
-                    image_url = f"data:image/jpeg;base64,{image_base64}"
-                update_progress("Processing complete", 100)
-            except Exception as e:
-                raise RuntimeError(f"Failed to encode image: {str(e)}")
-            
-            result = {
-                "id": result_id,
-                "image_url": image_url,
-                "prompt": f"Generated with {model_id}",
-                "model_id": model_id,
-                "parameters": {
-                    **parameters,
-                    "seed": seed
-                },
-                "timestamp": datetime.now().isoformat(),
-                "file_path": str(result_path)
-            }
-            
-            logger.info(f"Processing completed: {result_id}")
-            
-            # Vyčisti GPU paměť
-            torch.cuda.empty_cache()
-            
-            return result
-            
-        except Exception as e:
-            logger.error(f"Error processing image: {e}")
-            # Vyčisti GPU paměť i při chybě
-            torch.cuda.empty_cache()
-            raise e
-    
-    def get_available_models(self) -> List[Dict]:
-        """Vrátí seznam dostupných modelů"""
-        return self.model_manager.get_models()
-    
-    def get_available_loras(self) -> List[Dict]:
-        """Vrátí seznam dostupných LoRA modelů"""
-        return self.model_manager.get_loras()
-    
-    def scan_models(self) -> Tuple[int, int]:
-        """Skenuje disky pro nové modely"""
-        return self.model_manager.scan_models()
-    
-    def get_performance_stats(self) -> Dict:
-        """Vrátí statistiky výkonu"""
-        stats = self.model_manager.get_stats()
-        stats.update({
-            "current_model": self.current_model_id,
-            "pipeline_loaded": self.current_pipeline is not None,
-            "loaded_loras": list(self.loaded_loras)
-        })
-        return stats
+            logger.error(f"Failed to process image: {e}")
+            raise
     
     def cleanup(self):
-        """Vyčistí paměť a uvolní zdroje"""
-        self._cleanup_pipeline()
-        self.model_manager.cleanup()
+        """Clean up resources."""
+        if self.pipe is not None:
+            del self.pipe
+            self.pipe = None
+        
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
         logger.info("AI Processor cleanup completed")
