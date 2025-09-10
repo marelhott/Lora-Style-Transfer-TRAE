@@ -58,34 +58,28 @@ if [ ! -f "node_modules/.bin/tailwindcss" ]; then
     npm install -D tailwindcss postcss autoprefixer
 fi
 
-# Zkontroluj concurrently
-if [ ! -f "node_modules/.bin/concurrently" ]; then
-    log "📦 Installing missing concurrently..."
-    npm install -D concurrently
+# Zkontroluj Next.js
+if [ ! -f "node_modules/.bin/next" ]; then
+    log "📦 Installing missing Next.js..."
+    npm install next
 fi
 
 # Ověř že všechny tools jsou dostupné
 log "🔍 Verifying tools availability..."
-if [ -f "node_modules/.bin/concurrently" ]; then
-    log "✅ concurrently is available"
+if [ -f "node_modules/.bin/next" ]; then
+    log "✅ Next.js is available"
 else
-    log "❌ concurrently still missing"
+    log "❌ Next.js still missing"
 fi
 
 if [ -f "node_modules/.bin/tailwindcss" ]; then
-    log "✅ tailwindcss is available"
+    log "✅ Tailwind CSS is available"
 else
-    log "❌ tailwindcss still missing"
-fi
-
-if [ -f "node_modules/.bin/next" ]; then
-    log "✅ next is available"
-else
-    log "❌ next still missing"
+    log "❌ Tailwind CSS still missing"
 fi
 
 # Zkopíruj node_modules na /data pro příště (pokud se podařilo)
-if [ -f "node_modules/.bin/concurrently" ] && [ -f "node_modules/.bin/tailwindcss" ]; then
+if [ -f "node_modules/.bin/next" ] && [ -f "node_modules/.bin/tailwindcss" ]; then
     log "💾 Caching node_modules to persistent storage..."
     mkdir -p "$DATA_DIR"
     cp -r node_modules "$DATA_DIR/" 2>/dev/null || true
@@ -110,7 +104,7 @@ log "   Frontend: http://localhost:3000"
 log "   Backend API: http://localhost:8000"
 
 # Spusť v development mode
-log "🔧 Starting with concurrently..."
+log "🔧 Starting Next.js development server..."
 npm run dev &
 NEXT_PID=$!
 
@@ -124,7 +118,7 @@ log "📊 Monitoring processes..."
 # Monitor procesů
 while true; do
     if ! kill -0 $NEXT_PID 2>/dev/null; then
-        log "❌ Application process died, restarting..."
+        log "❌ Next.js process died, restarting..."
         npm run dev &
         NEXT_PID=$!
     fi

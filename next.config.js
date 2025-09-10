@@ -18,16 +18,9 @@ const nextConfig = {
     serverComponentsExternalPackages: ['sharp'],
   },
   webpack: (config, { dev, isServer }) => {
-    // Fix Tailwind CSS processing
-    config.module.rules.push({
-      test: /\.css$/,
-      use: [
-        'style-loader',
-        'css-loader',
-        'postcss-loader'
-      ],
-    });
-
+    // Remove conflicting CSS rules that interfere with Next.js built-in CSS handling
+    // Next.js already handles CSS/PostCSS/Tailwind processing correctly
+    
     // Macaly-tagger loader configuration with error handling for production/RunPod
     if (dev && process.env.NODE_ENV !== 'production') {
       try {

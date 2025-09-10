@@ -20,7 +20,8 @@
     "macaly"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" --names \"NEXT,PY\" --prefix-colors \"blue,green\"",
+    "dev": "next dev",
+    "dev:full": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" --names \"NEXT,PY\" --prefix-colors \"blue,green\"",
     "dev:frontend": "next dev",
     "dev:backend": "cd backend && python3 main.py",
     "dev:frontend-only": "next dev",
