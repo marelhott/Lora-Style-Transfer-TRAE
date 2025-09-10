@@ -99,7 +99,7 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.2.1",
-    "eslint": "^9",
+    "eslint": "^8.57.0",
     "eslint-config-next": "14.2.15",
     "jsdom": "^26.0.0",
     "macaly-tagger": "^1.0.1",
