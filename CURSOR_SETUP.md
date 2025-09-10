@@ -53,11 +53,6 @@ python main.py
 │  ├─ ai_pipeline.py       # ✅ AI processing pipeline
 │  └─ requirements.txt     # Python dependencies
 │
-├─ convex/
-│  ├─ results.ts           # ✅ Databáze výsledků
-│  ├─ presets.ts           # ✅ Databáze předvoleb
-│  └─ schema.ts            # Databázové schéma
-│
 └─ runpod_backend.py       # ✅ Standalone RunPod server
 ```
 
@@ -71,7 +66,7 @@ python main.py
 - **Model Manager** - výběr modelů z backend API  
 - **Progress Tracker** - real-time sledování zpracování
 - **Results Gallery** - zobrazení, download, favorites
-- **Preset Manager** - uložení/načtení nastavení do Convex DB
+- **Preset Manager** - uložení/načtení nastavení do localStorage
 
 ### ✅ **Backend (Python FastAPI)**
 - **`/api/models`** - vrací seznam dostupných modelů
@@ -79,10 +74,10 @@ python main.py
 - **`/api/status/{job_id}`** - sleduje progress jobu
 - **`/api/health`** - health check + GPU info
 
-### ✅ **Databáze (Convex)**
-- **Results** - ukládání vygenerovaných obrázků
-- **Presets** - ukládání předvoleb parametrů
-- **Real-time updates** - automatické refresh UI
+### ✅ **Lokální úložiště (localStorage)**
+- **Results** - ukládání vygenerovaných obrázků lokálně
+- **Presets** - ukládání předvoleb parametrů lokálně
+- **Persistent data** - data zůstávají v browseru
 
 ---
 
@@ -92,7 +87,7 @@ python main.py
 ```bash
 npm run dev
 ```
-**Funkční:** UI komponenty, lokální state, Convex databáze
+**Funkční:** UI komponenty, lokální state, localStorage
 **Nefunkční:** Generování (potřebuje backend)
 
 ### **Frontend + Backend**
@@ -120,11 +115,11 @@ mkdir -p backend/test_models
 export MODELS_PATH="/path/to/your/models"
 ```
 
-### **"Convex not connected"**
+### **"Data not persisting"**
 ```bash
-# Setup Convex:
-npx convex dev
-# Postupujte podle instrukcí pro login a deploy
+# Data se ukládají do localStorage
+# Vyčistit data: localStorage.clear()
+# Zkontrolovat data: localStorage.getItem('ai-results')
 ```
 
 ### **"CUDA not available"**
