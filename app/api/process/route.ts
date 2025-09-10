@@ -4,7 +4,7 @@ import path from 'path'
 import fs from 'fs'
 import { getProcessingState } from '../_processing/state'
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     console.log('🔄 Processing request...')
     
