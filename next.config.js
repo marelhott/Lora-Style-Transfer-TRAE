@@ -4,42 +4,44 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // !! WARN !!
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
-    // !! WARN !!
     ignoreBuildErrors: true,
   },
-  images: { unoptimized: true },
-  devIndicators: false,
-  allowedDevOrigins: [
-    "*.macaly.dev",
-    "*.macaly.app",
-    "*.macaly-app.com",
-    "*.macaly-user-data.dev",
-    "*.fly.dev",
-  ],
-  // https://github.com/vercel/next.js/issues/79588#issuecomment-2972850452
+  images: {
+    domains: ['localhost'],
+    unoptimized: true,
+  },
+  devIndicators: {
+    buildActivity: false,
+  },
   experimental: {
-    preloadEntriesOnStart: false,
-    webpackMemoryOptimizations: true,
+    allowedOrigins: ['localhost:3000', 'localhost:8000'],
+    serverComponentsExternalPackages: ['sharp'],
   },
   webpack: (config, { dev, isServer }) => {
-    // Skip macaly-tagger in production/RunPod environment
+    // Fix Tailwind CSS processing
+    config.module.rules.push({
+      test: /\.css$/,
+      use: [
+        'style-loader',
+        'css-loader',
+        'postcss-loader'
+      ],
+    });
+
+    // Macaly-tagger loader configuration with error handling for production/RunPod
     if (dev && process.env.NODE_ENV !== 'production') {
       try {
-        config.module.rules.unshift({
-          test: /\.(jsx|tsx)$/,
-          exclude: /node_modules/,
-          use: [
-            {
-              loader: "macaly-tagger",
+        config.module.rules.push({
+          test: /\.(js|jsx|ts|tsx)$/,
+          use: {
+            loader: 'macaly-tagger',
+            options: {
+              // Macaly-tagger options
             },
-          ],
-          enforce: "pre", // Run before other loaders
+          },
         });
-      } catch (e) {
-        console.log('macaly-tagger not available, skipping...');
+      } catch (error) {
+        console.warn('Macaly-tagger loader not available:', error.message);
       }
     }
 
