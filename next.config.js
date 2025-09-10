@@ -25,18 +25,22 @@ const nextConfig = {
     webpackMemoryOptimizations: true,
   },
   webpack: (config, { dev, isServer }) => {
-    // Apply macaly-tagger in development for both client and server
-    if (dev) {
-      config.module.rules.unshift({
-        test: /\.(jsx|tsx)$/,
-        exclude: /node_modules/,
-        use: [
-          {
-            loader: "macaly-tagger",
-          },
-        ],
-        enforce: "pre", // Run before other loaders
-      });
+    // Skip macaly-tagger in production/RunPod environment
+    if (dev && process.env.NODE_ENV !== 'production') {
+      try {
+        config.module.rules.unshift({
+          test: /\.(jsx|tsx)$/,
+          exclude: /node_modules/,
+          use: [
+            {
+              loader: "macaly-tagger",
+            },
+          ],
+          enforce: "pre", // Run before other loaders
+        });
+      } catch (e) {
+        console.log('macaly-tagger not available, skipping...');
+      }
     }
 
     return config;
